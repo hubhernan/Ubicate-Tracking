@@ -1,0 +1,471 @@
+import React, { useState, useEffect } from 'react';
+import Map from './components/Map/Map';
+import Login from './components/Login';
+import { useLocation } from './hooks/useLocation';
+import { useSocket } from './hooks/useSocket';
+import { getGeofences, getHistory, calculateRoute, updateAssetMode, getAssets } from './services/api';
+import { 
+  Activity, 
+  Map as MapIcon, 
+  History, 
+  Shield, 
+  Settings, 
+  Navigation,
+  Battery,
+  Signal,
+  Menu,
+  X,
+  Bell,
+  Search,
+  Car,
+  Leaf,
+  Zap,
+  Footprints,
+  AlertTriangle,
+  Plus,
+  Truck,
+  Layers,
+  Globe,
+  Wind
+} from 'lucide-react';
+
+const HERE_API_KEY = 'YOUR_HERE_API_KEY'; // Placeholder
+
+const NavItem: React.FC<{ icon: React.ReactNode, label: string, active?: boolean, collapsed: boolean, onClick?: () => void }> = ({ icon, label, active, collapsed, onClick }) => (
+  <button 
+    onClick={onClick}
+    className={`w-full flex items-center gap-4 p-3 rounded-xl transition-colors ${active ? 'bg-brand-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+  >
+    {icon}
+    {!collapsed && <span className="font-medium">{label}</span>}
+  </button>
+);
+
+const App: React.FC = () => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [viewMode, setViewMode] = useState<'live' | 'history' | 'routing'>('live');
+  const [geofences, setGeofences] = useState<any[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
+  const [fleet, setFleet] = useState<any[]>([]);
+  const [selectedAssetId, setSelectedAssetId] = useState<string>('');
+  const [routeData, setRouteData] = useState<any>(null);
+  const [baseLayer, setBaseLayer] = useState<'normal' | 'satellite' | 'terrain'>('normal');
+  const [showTraffic, setShowTraffic] = useState(false);
+  const [destination, setDestination] = useState('');
+  const [drivingMode, setDrivingMode] = useState('normal');
+  const [speedLimit, setSpeedLimit] = useState(100);
+  const [notifications, setNotifications] = useState<{ id: number; text: string; type: 'info' | 'warning' }[]>([]);
+  const { coords, error } = useLocation();
+  const { emit, on, socket } = useSocket('http://localhost:4000');
+
+  useEffect(() => {
+    getGeofences().then(setGeofences).catch(console.error);
+    getAssets().then(setFleet).catch(console.error);
+
+    on('geofence-breach', (data: any) => {
+      const names = data.geofences.map((g: any) => g.name).join(', ');
+      addNotification(`Entered geofence: ${names}`, 'info');
+    });
+
+    on('speeding-alert', (data: any) => {
+      addNotification(`Speed limit exceeded! ${data.speed.toFixed(1)} km/h in ${data.mode} mode.`, 'warning');
+    });
+  }, [on]);
+
+  const addNotification = (text: string, type: 'info' | 'warning' = 'info') => {
+    const id = Date.now();
+    setNotifications(prev => [{ id, text, type }, ...prev]);
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }, 5000);
+  };
+
+  const changeMode = async (mode: string, limit: number) => {
+    if (!socket?.id) return;
+    try {
+      await updateAssetMode(socket.id, mode, limit);
+      setDrivingMode(mode);
+      setSpeedLimit(limit);
+      addNotification(`Mode changed to ${mode} (Limit: ${limit} km/h)`, 'info');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setUser(null);
+  };
+
+  if (!user) {
+    return <Login onLogin={setUser} />;
+  }
+
+  const fetchHistory = async () => {
+    if (!socket?.id) return;
+    const end = new Date().toISOString();
+    const start = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(); // Last 24h
+    try {
+      const data = await getHistory(socket.id, start, end);
+      setHistory(data);
+      setViewMode('history');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleCalculateRoute = async () => {
+    if (!coords) return;
+    try {
+      // Mocking geocoding for destination for demo purposes
+      // In production, use HERE Geocoding API
+      const mockDest = { lat: coords.latitude + 0.05, lng: coords.longitude + 0.05 };
+      const data = await calculateRoute({
+        origin: { lat: coords.latitude, lng: coords.longitude },
+        destination: mockDest,
+        transportMode: 'car'
+      });
+      setRouteData(data);
+      setViewMode('routing');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  useEffect(() => {
+    if (coords) {
+      emit('update-location', {
+        lat: coords.latitude,
+        lng: coords.longitude,
+        speed: coords.speed,
+        heading: coords.heading,
+        accuracy: coords.accuracy,
+        battery: 85, // Mock battery
+        status: 'moving'
+      });
+    }
+  }, [coords, emit]);
+
+  return (
+    <div className="flex h-screen w-full bg-slate-950 overflow-hidden text-slate-200">
+      {/* Sidebar */}
+      <aside className={`
+        ${isSidebarOpen ? 'w-80' : 'w-20'} 
+        transition-all duration-300 ease-in-out
+        bg-slate-900 border-r border-slate-800 flex flex-col z-20
+      `}>
+        <div className="p-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-brand-500 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/20">
+              <Navigation className="text-white w-6 h-6" />
+            </div>
+            {isSidebarOpen && <h1 className="text-xl font-bold tracking-tight">Ubicate</h1>}
+          </div>
+          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 hover:bg-slate-800 rounded-lg">
+            {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
+
+        <nav className="flex-1 px-4 py-2 space-y-2">
+          <NavItem 
+            icon={<MapIcon size={22} />} 
+            label="Live Map" 
+            active={viewMode === 'live'} 
+            collapsed={!isSidebarOpen} 
+            onClick={() => setViewMode('live')}
+          />
+          <NavItem 
+            icon={<History size={22} />} 
+            label="History" 
+            active={viewMode === 'history'}
+            collapsed={!isSidebarOpen} 
+            onClick={fetchHistory}
+          />
+          <NavItem 
+            icon={<Navigation size={22} />} 
+            label="Optimize Route" 
+            active={viewMode === 'routing'}
+            collapsed={!isSidebarOpen} 
+            onClick={() => setViewMode('routing')}
+          />
+          <NavItem icon={<Shield size={22} />} label="Geofences" collapsed={!isSidebarOpen} />
+          <NavItem icon={<Activity size={22} />} label="Analytics" collapsed={!isSidebarOpen} />
+        </nav>
+
+        {isSidebarOpen && (
+          <div className="flex-1 overflow-y-auto px-4 py-4 border-t border-slate-800">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Active Fleet</h3>
+              <button className="p-1 hover:bg-slate-800 rounded text-brand-500">
+                <Plus size={16} />
+              </button>
+            </div>
+            <div className="space-y-3">
+              {fleet.map(asset => (
+                <div 
+                  key={asset.id} 
+                  onClick={() => setSelectedAssetId(asset.id)}
+                  className={`p-3 rounded-xl border transition-all cursor-pointer ${selectedAssetId === asset.id ? 'bg-brand-500/10 border-brand-500/50' : 'bg-slate-800/50 border-transparent hover:border-slate-700'}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${asset.status === 'moving' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-slate-700 text-slate-400'}`}>
+                      <Truck size={18} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-white truncate">{asset.name}</p>
+                      <p className="text-[10px] text-slate-500 flex items-center gap-1">
+                        <span className={`w-1.5 h-1.5 rounded-full ${asset.status === 'moving' ? 'bg-emerald-500' : 'bg-slate-500'}`} />
+                        {asset.status.toUpperCase()}
+                      </p>
+                    </div>
+                    {asset.battery_level && (
+                      <div className="text-[10px] font-mono text-slate-400">
+                        {asset.battery_level}%
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="p-4 border-t border-slate-800">
+          <NavItem icon={<Settings size={22} />} label="Settings" collapsed={!isSidebarOpen} />
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col relative">
+        {/* Header */}
+        <header className="h-16 bg-slate-900/50 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-6 z-10 absolute top-0 left-0 right-0">
+          <div className="flex items-center gap-4">
+            <h2 className="text-sm font-medium text-slate-400">Global Overview</h2>
+            <div className="h-4 w-px bg-slate-800" />
+            <div className="flex items-center gap-2 text-emerald-400 text-xs font-mono">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              SYSTEM ACTIVE
+            </div>
+          </div>
+
+          <div className="flex items-center gap-6">
+             <div className="flex bg-slate-800 rounded-lg p-1 gap-1">
+                <ModeButton 
+                  icon={<Car size={16} />} 
+                  active={drivingMode === 'normal'} 
+                  onClick={() => changeMode('normal', 100)} 
+                />
+                <ModeButton 
+                  icon={<Leaf size={16} />} 
+                  active={drivingMode === 'economic'} 
+                  onClick={() => changeMode('economic', 80)} 
+                />
+                <ModeButton 
+                  icon={<Zap size={16} />} 
+                  active={drivingMode === 'urgent'} 
+                  onClick={() => changeMode('urgent', 130)} 
+                />
+                <ModeButton 
+                  icon={<Footprints size={16} />} 
+                  active={drivingMode === 'pedestrian'} 
+                  onClick={() => changeMode('pedestrian', 10)} 
+                />
+             </div>
+             <div className="h-6 w-px bg-slate-800" />
+             <div className="flex items-center gap-4 text-slate-400">
+                <div className="flex items-center gap-1.5">
+                  <Battery size={16} />
+                  <span className="text-xs">85%</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Signal size={16} />
+                  <span className="text-xs">LTE</span>
+                </div>
+             </div>
+             <button 
+               onClick={handleLogout}
+               className="relative p-2 text-slate-400 hover:text-white transition-colors"
+             >
+               <Bell size={20} />
+               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand-500 rounded-full border-2 border-slate-900" />
+             </button>
+             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-brand-500 to-indigo-500 cursor-pointer" onClick={handleLogout} />
+          </div>
+        </header>
+
+        {/* Map Container */}
+            history={viewMode === 'history' ? history : []} 
+            routeData={viewMode === 'routing' ? routeData : null}
+            assets={fleet}
+            selectedAssetId={selectedAssetId}
+            baseLayer={baseLayer}
+            showTraffic={showTraffic}
+          />
+        </div>
+
+        {/* Map Layer Controls */}
+        <div className="absolute bottom-40 right-8 flex flex-col gap-2 z-10">
+          <button 
+            onClick={() => setBaseLayer('normal')}
+            className={`p-3 rounded-xl shadow-lg transition-all ${baseLayer === 'normal' ? 'bg-brand-500 text-white' : 'bg-slate-900/90 text-slate-400 hover:text-white'}`}
+            title="Standard Map"
+          >
+            <MapIcon size={20} />
+          </button>
+          <button 
+            onClick={() => setBaseLayer('satellite')}
+            className={`p-3 rounded-xl shadow-lg transition-all ${baseLayer === 'satellite' ? 'bg-brand-500 text-white' : 'bg-slate-900/90 text-slate-400 hover:text-white'}`}
+            title="Satellite View"
+          >
+            <Globe size={20} />
+          </button>
+          <button 
+            onClick={() => setBaseLayer('terrain')}
+            className={`p-3 rounded-xl shadow-lg transition-all ${baseLayer === 'terrain' ? 'bg-brand-500 text-white' : 'bg-slate-900/90 text-slate-400 hover:text-white'}`}
+            title="Terrain View"
+          >
+            <Layers size={20} />
+          </button>
+          <div className="h-px bg-slate-800 my-1" />
+          <button 
+            onClick={() => setShowTraffic(!showTraffic)}
+            className={`p-3 rounded-xl shadow-lg transition-all ${showTraffic ? 'bg-amber-500 text-white' : 'bg-slate-900/90 text-slate-400 hover:text-white'}`}
+            title="Toggle Traffic"
+          >
+            <Wind size={20} />
+          </button>
+        </div>
+
+        {/* Routing Panel */}
+        {viewMode === 'routing' && (
+          <div className="absolute top-20 left-8 w-80 bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 shadow-2xl z-10 animate-in slide-in-from-left-4">
+            <h3 className="font-bold text-white mb-4">Route Optimization</h3>
+            <div className="space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 text-slate-500" size={16} />
+                <input 
+                  type="text" 
+                  placeholder="Where to?" 
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-brand-500"
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
+                />
+              </div>
+              <button 
+                onClick={handleCalculateRoute}
+                className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                <Navigation size={18} />
+                Optimize Route
+              </button>
+            </div>
+
+            {routeData && routeData.routes && (
+              <div className="mt-6 pt-6 border-t border-slate-800">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-xs text-slate-400 uppercase font-bold tracking-wider">Summary</span>
+                  <span className="px-2 py-0.5 bg-brand-500/10 text-brand-500 text-[10px] font-bold rounded">Fastest</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-[10px] text-slate-500 uppercase">Distance</p>
+                    <p className="text-lg font-bold text-white">{(routeData.routes[0].sections[0].summary.length / 1000).toFixed(1)} km</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-500 uppercase">Duration</p>
+                    <p className="text-lg font-bold text-white">{Math.round(routeData.routes[0].sections[0].summary.duration / 60)} min</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Notifications */}
+        <div className="absolute top-20 right-8 flex flex-col gap-2 z-20 pointer-events-none">
+          {notifications.map((notif) => (
+            <div key={notif.id} className={`
+              ${notif.type === 'warning' ? 'bg-amber-500' : 'bg-brand-500'} 
+              text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 animate-in slide-in-from-right-full pointer-events-auto
+            `}>
+              {notif.type === 'warning' ? <AlertTriangle size={18} /> : <Bell size={18} />}
+              <span className="text-sm font-medium">{notif.text}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Floating Status Card */}
+        {coords && (
+          <div className="absolute bottom-8 right-8 w-64 bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 shadow-2xl z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="font-bold text-white">My Device</h3>
+                <p className="text-xs text-slate-400">Active Tracking</p>
+              </div>
+              <div className="px-2 py-1 rounded bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase tracking-wider">
+                Moving
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-[10px] text-slate-500 uppercase font-bold">Speed</p>
+                <p className="text-lg font-bold text-white">{(coords.speed || 0).toFixed(1)} <span className="text-xs font-normal text-slate-400">km/h</span></p>
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-500 uppercase font-bold">Accuracy</p>
+                <p className="text-lg font-bold text-white">{coords.accuracy.toFixed(0)} <span className="text-xs font-normal text-slate-400">m</span></p>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-500">
+              <span>LAT: {coords.latitude.toFixed(4)}</span>
+              <span>LNG: {coords.longitude.toFixed(4)}</span>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="absolute top-20 right-8 bg-red-500/10 border border-red-500/50 text-red-500 rounded-lg px-4 py-2 text-xs flex items-center gap-2 z-10">
+            <Shield size={14} />
+            {error}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+};
+
+interface NavItemProps {
+  icon: React.ReactNode;
+  label: string;
+  active?: boolean;
+  collapsed?: boolean;
+  onClick?: () => void;
+}
+
+const ModeButton: React.FC<{ icon: React.ReactNode, active: boolean, onClick: () => void }> = ({ icon, active, onClick }) => (
+  <button 
+    onClick={onClick}
+    className={`p-1.5 rounded-md transition-all ${active ? 'bg-brand-500 text-white shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
+  >
+    {icon}
+  </button>
+);
+
+const NavItem: React.FC<NavItemProps> = ({ icon, label, active, collapsed, onClick }) => {
+  return (
+    <button 
+      onClick={onClick}
+      className={`
+      w-full flex items-center gap-4 p-3 rounded-xl cursor-pointer transition-all duration-200
+      ${active ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}
+      ${collapsed ? 'justify-center' : ''}
+    `}>
+      {icon}
+      {!collapsed && <span className="font-medium">{label}</span>}
+    </button>
+  );
+};
+
+export default App;
