@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { login } from '../services/api';
+import { login, register } from '../services/api';
 import { Navigation, Lock, Mail } from 'lucide-react';
 
 interface LoginProps {
@@ -10,17 +10,21 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [fullName, setFullName] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
+      if (isRegistering) {
+        await register({ email, password, fullName, role: 'admin' });
+      }
       const data = await login({ email, password });
       onLogin(data.user);
     } catch (err: any) {
-      setError('Invalid email or password');
+      setError(isRegistering ? 'Error registering account' : 'Invalid email or password');
       setLoading(false);
     }
   };
@@ -37,6 +41,22 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {isRegistering && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-300 ml-1">Full Name</label>
+              <div className="relative">
+                <Navigation className="absolute left-3 top-3.5 text-slate-500" size={18} />
+                <input 
+                  type="text" 
+                  required
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 pl-11 pr-4 text-white focus:outline-none focus:border-brand-500 transition-colors"
+                  placeholder="John Doe"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-300 ml-1">Work Email</label>
             <div className="relative">
@@ -74,13 +94,19 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             disabled={loading}
             className="w-full bg-brand-500 hover:bg-brand-600 disabled:bg-brand-500/50 text-white font-bold py-4 rounded-xl shadow-lg shadow-brand-500/20 transition-all active:scale-[0.98]"
           >
-            {loading ? 'Authenticating...' : 'Sign In'}
+            {loading ? 'Processing...' : isRegistering ? 'Create Account' : 'Sign In'}
           </button>
         </form>
 
         <div className="mt-8 pt-8 border-t border-slate-800 text-center">
           <p className="text-slate-500 text-sm">
-            Don't have an account? <span className="text-brand-500 font-bold cursor-pointer hover:underline">Request access</span>
+            {isRegistering ? 'Already have an account?' : "Don't have an account?"}{' '}
+            <span 
+              onClick={() => setIsRegistering(!isRegistering)}
+              className="text-brand-500 font-bold cursor-pointer hover:underline"
+            >
+              {isRegistering ? 'Sign in' : 'Request access'}
+            </span>
           </p>
         </div>
       </div>
