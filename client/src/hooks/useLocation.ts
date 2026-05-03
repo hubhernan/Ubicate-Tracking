@@ -6,7 +6,7 @@ interface LocationState {
   loading: boolean;
 }
 
-export const useLocation = (options?: GeolocationOptions) => {
+export const useLocation = (options?: PositionOptions) => {
   const [state, setState] = useState<LocationState>({
     coords: null,
     error: null,

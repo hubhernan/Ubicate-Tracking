@@ -67,7 +67,7 @@ const Map: React.FC<MapProps> = ({
     geofences.forEach(gf => {
       if (gf.geometry) {
         const reader = new window.H.data.geojson.Reader(undefined, {
-          style: (feature: any) => {
+          style: (_feature: any) => {
             return {
               fillColor: 'rgba(14, 165, 233, 0.2)',
               strokeColor: 'rgba(14, 165, 233, 0.8)',
