@@ -57,7 +57,7 @@ const App: React.FC = () => {
   const [speedLimit, setSpeedLimit] = useState(100);
   const [notifications, setNotifications] = useState<{ id: number; text: string; type: 'info' | 'warning' }[]>([]);
   const { coords, error } = useLocation();
-  const { emit, on, socket } = useSocket('http://localhost:4000');
+  const { emit, on, socket } = useSocket(import.meta.env.VITE_SOCKET_URL || 'https://ubicate-server.onrender.com');
 
   useEffect(() => {
     getGeofences().then(setGeofences).catch(console.error);
