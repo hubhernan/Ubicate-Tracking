@@ -412,7 +412,7 @@ const App: React.FC = () => {
               </div>
               <div>
                 <p className="text-[10px] text-slate-500 uppercase font-bold">Accuracy</p>
-                <p className="text-lg font-bold text-white">{coords.accuracy.toFixed(0)} <span className="text-xs font-normal text-slate-400">m</span></p>
+                <p className="text-lg font-bold text-white">{(coords.accuracy || 0).toFixed(0)} <span className="text-xs font-normal text-slate-400">m</span></p>
               </div>
             </div>
 

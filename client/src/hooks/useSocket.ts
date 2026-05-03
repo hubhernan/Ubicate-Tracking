@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 export const useSocket = (url: string) => {
@@ -18,13 +18,13 @@ export const useSocket = (url: string) => {
     };
   }, [url]);
 
-  const emit = (event: string, data: any) => {
+  const emit = useCallback((event: string, data: any) => {
     socketRef.current?.emit(event, data);
-  };
+  }, []);
 
-  const on = (event: string, callback: (data: any) => void) => {
+  const on = useCallback((event: string, callback: (data: any) => void) => {
     socketRef.current?.on(event, callback);
-  };
+  }, []);
 
   return { emit, on, socket: socketRef.current };
 };
