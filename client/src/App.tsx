@@ -29,7 +29,7 @@ import {
   Wind
 } from 'lucide-react';
 
-const HERE_API_KEY = 'YOUR_HERE_API_KEY'; // Placeholder
+const HERE_API_KEY = 'Xas3A0ZG88Y2g0DxgB8x';
 
 
 
@@ -90,10 +90,6 @@ const App: React.FC = () => {
     setUser(null);
   };
 
-  if (!user) {
-    return <Login onLogin={setUser} />;
-  }
-
   const fetchHistory = async () => {
     if (!socket?.id) return;
     const end = new Date().toISOString();
@@ -125,7 +121,7 @@ const App: React.FC = () => {
     }
   };
   useEffect(() => {
-    if (coords) {
+    if (coords && user) {
       emit('update-location', {
         lat: coords.latitude,
         lng: coords.longitude,
@@ -136,7 +132,11 @@ const App: React.FC = () => {
         status: 'moving'
       });
     }
-  }, [coords, emit]);
+  }, [coords, emit, user]);
+
+  if (!user) {
+    return <Login onLogin={setUser} />;
+  }
 
   return (
     <div className="flex h-screen w-full bg-slate-950 overflow-hidden text-slate-200">
