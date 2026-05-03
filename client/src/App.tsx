@@ -31,15 +31,7 @@ import {
 
 const HERE_API_KEY = 'YOUR_HERE_API_KEY'; // Placeholder
 
-const NavItem: React.FC<{ icon: React.ReactNode, label: string, active?: boolean, collapsed: boolean, onClick?: () => void }> = ({ icon, label, active, collapsed, onClick }) => (
-  <button 
-    onClick={onClick}
-    className={`w-full flex items-center gap-4 p-3 rounded-xl transition-colors ${active ? 'bg-brand-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
-  >
-    {icon}
-    {!collapsed && <span className="font-medium">{label}</span>}
-  </button>
-);
+
 
 const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -294,6 +286,12 @@ const App: React.FC = () => {
         </header>
 
         {/* Map Container */}
+        <div className="absolute inset-0 z-0">
+          <Map 
+            apiKey={HERE_API_KEY}
+            center={coords ? { lat: coords.latitude, lng: coords.longitude } : { lat: 19.4326, lng: -99.1332 }}
+            zoom={14}
+            geofences={geofences}
             history={viewMode === 'history' ? history : []} 
             routeData={viewMode === 'routing' ? routeData : null}
             assets={fleet}
