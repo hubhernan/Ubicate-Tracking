@@ -1,10 +1,4 @@
 import axios from 'axios';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const HERE_API_KEY = process.env.HERE_API_KEY;
-const ROUTING_URL = 'https://router.hereapi.com/v8/routes';
 
 interface Waypoint {
   lat: number;
@@ -15,30 +9,46 @@ export const calculateOptimizedRoute = async (
   origin: Waypoint,
   destination: Waypoint,
   via: Waypoint[] = [],
-  transportMode: string = 'car',
+  transportMode: string = 'driving',
   routingMode: string = 'fast'
 ) => {
   try {
-    const params: any = {
-      transportMode,
-      origin: `${origin.lat},${origin.lng}`,
-      destination: `${destination.lat},${destination.lng}`,
-      return: 'polyline,summary,actions,instructions',
-      apikey: HERE_API_KEY,
-    };
+    // We use the free public OSRM API. Profile: driving
+    const coordinates = [
+      `${origin.lng},${origin.lat}`,
+      ...via.map(v => `${v.lng},${v.lat}`),
+      `${destination.lng},${destination.lat}`
+    ].join(';');
 
-    if (via.length > 0) {
-      params.via = via.map(p => `${p.lat},${p.lng}`).join('|');
+    const url = `http://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
+
+    const response = await axios.get(url);
+    const data = response.data;
+
+    if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+      throw new Error('No route found');
     }
 
-    // routingMode: 'fast' or 'short'
-    // For optimization (v8 doesn't have a direct "reorder" like v7, but we can use the Waypoint Sequence API if needed)
-    // For now, we'll implement standard multi-stop routing.
-    
-    const response = await axios.get(ROUTING_URL, { params });
-    return response.data;
+    const route = data.routes[0];
+
+    // Format response to be compatible with frontend expectations
+    return {
+      routes: [
+        {
+          geometry: route.geometry,
+          sections: [
+            {
+              summary: {
+                duration: route.duration,
+                length: route.distance
+              }
+            }
+          ]
+        }
+      ]
+    };
   } catch (error: any) {
-    console.error('Error calculating route:', error.response?.data || error.message);
+    console.error('Error calculating OSRM route:', error.response?.data || error.message);
     throw new Error('Failed to calculate route');
   }
 };
