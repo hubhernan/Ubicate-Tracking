@@ -3,7 +3,7 @@ import Map from './components/Map/Map';
 import Login from './components/Login';
 import { useLocation } from './hooks/useLocation';
 import { useSocket } from './hooks/useSocket';
-import { getGeofences, getHistory, calculateRoute, updateAssetMode, getAssets } from './services/api';
+import { getGeofences, getHistory, calculateRoute, updateAssetMode, getAssets, createAsset } from './services/api';
 import { 
   Activity, 
   Map as MapIcon, 
@@ -49,6 +49,8 @@ const App: React.FC = () => {
   const [, setSpeedLimit] = useState(100);
   const [notifications, setNotifications] = useState<{ id: number; text: string; type: 'info' | 'warning' }[]>([]);
   const { coords, error } = useLocation();
+  const [showAssetModal, setShowAssetModal] = useState(false);
+  const [newAsset, setNewAsset] = useState({ name: '', type: 'vehicle' });
   const { emit, on, socket } = useSocket(import.meta.env.VITE_SOCKET_URL || 'https://ubicate-server.onrender.com');
 
   useEffect(() => {
@@ -82,6 +84,27 @@ const App: React.FC = () => {
       addNotification(`Mode changed to ${mode} (Limit: ${limit} km/h)`, 'info');
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleAddAsset = async () => {
+    try {
+      await createAsset({
+        name: newAsset.name,
+        type: newAsset.type,
+        userId: user?.id,
+        metadata: { color: '#3b82f6' }
+      });
+      // The API returns the raw object, but it might lack ST_X/ST_Y fields,
+      // so let's refetch or just append with default status/location
+      const assetsList = await getAssets();
+      setFleet(assetsList);
+      setShowAssetModal(false);
+      setNewAsset({ name: '', type: 'vehicle' });
+      addNotification('Asset created successfully!', 'info');
+    } catch (err) {
+      console.error(err);
+      addNotification('Failed to create asset', 'warning');
     }
   };
 
@@ -188,7 +211,7 @@ const App: React.FC = () => {
           <div className="flex-1 overflow-y-auto px-4 py-4 border-t border-slate-800">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Active Fleet</h3>
-              <button className="p-1 hover:bg-slate-800 rounded text-brand-500">
+              <button onClick={() => setShowAssetModal(true)} className="p-1 hover:bg-slate-800 rounded text-brand-500">
                 <Plus size={16} />
               </button>
             </div>
@@ -427,6 +450,41 @@ const App: React.FC = () => {
           <div className="absolute top-20 right-8 bg-red-500/10 border border-red-500/50 text-red-500 rounded-lg px-4 py-2 text-xs flex items-center gap-2 z-10">
             <Shield size={14} />
             {error}
+          </div>
+        )}
+
+        {showAssetModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
+            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-96 shadow-2xl">
+              <h2 className="text-xl font-bold mb-4 text-white">Add New Asset</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs text-slate-500 uppercase font-bold">Asset Name</label>
+                  <input 
+                    value={newAsset.name}
+                    onChange={(e) => setNewAsset({...newAsset, name: e.target.value})}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white mt-1 focus:outline-none focus:border-brand-500" 
+                    placeholder="e.g. Delivery Truck 1"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 uppercase font-bold">Asset Type</label>
+                  <select 
+                    value={newAsset.type}
+                    onChange={(e) => setNewAsset({...newAsset, type: e.target.value})}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white mt-1 focus:outline-none focus:border-brand-500"
+                  >
+                    <option value="vehicle">Vehicle</option>
+                    <option value="person">Person</option>
+                    <option value="package">Package</option>
+                  </select>
+                </div>
+                <div className="flex justify-end gap-3 mt-6">
+                  <button onClick={() => setShowAssetModal(false)} className="px-4 py-2 rounded-lg font-bold text-slate-400 hover:bg-slate-800 transition-colors">Cancel</button>
+                  <button onClick={handleAddAsset} disabled={!newAsset.name} className="px-4 py-2 rounded-lg font-bold bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50 transition-colors">Save Asset</button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </main>
