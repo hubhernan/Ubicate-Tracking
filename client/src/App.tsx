@@ -485,7 +485,8 @@ const App: React.FC = () => {
             </div>
             {isDrawingMode ? (
                <div className="bg-amber-500/20 text-amber-500 p-3 rounded-lg text-xs font-bold border border-amber-500/50">
-                 Haz clic en el mapa para dibujar puntos. Doble-clic para finalizar el polígono.
+                 Haz clic en el mapa para dibujar puntos. <br/><br/>Presiona <b>Enter</b> o haz clic en el botón para finalizar el polígono.
+                 <button onClick={() => document.dispatchEvent(new Event('finish-polygon'))} className="mt-4 block w-full text-center py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600 transition-colors">Terminar y Guardar</button>
                  <button onClick={() => setIsDrawingMode(false)} className="mt-2 block w-full text-center py-2 bg-slate-800 text-slate-300 rounded hover:bg-slate-700 transition-colors">Cancelar</button>
                </div>
             ) : (

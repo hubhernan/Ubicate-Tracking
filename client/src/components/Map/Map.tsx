@@ -180,8 +180,7 @@ const Map: React.FC<MapProps> = ({
         }).addTo(map);
       };
       
-      const onDblClick = (e: L.LeafletMouseEvent) => {
-        L.DomEvent.stopPropagation(e);
+      const finishPolygon = () => {
         if (drawnPointsRef.current.length >= 3 && onPolygonDrawn) {
           const coords = drawnPointsRef.current.map(p => [p.lng, p.lat]);
           coords.push([drawnPointsRef.current[0].lng, drawnPointsRef.current[0].lat]); // close
@@ -198,13 +197,28 @@ const Map: React.FC<MapProps> = ({
         drawingLayerRef.current = null;
       };
 
+      const onDblClick = (e: L.LeafletMouseEvent) => {
+        L.DomEvent.stopPropagation(e);
+        finishPolygon();
+      };
+      
+      const onKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Enter') finishPolygon();
+      };
+
+      const onCustomFinish = () => finishPolygon();
+
       map.on('click', onClick);
       map.on('dblclick', onDblClick);
+      document.addEventListener('keydown', onKeyDown);
+      document.addEventListener('finish-polygon', onCustomFinish);
       map.doubleClickZoom.disable();
 
       return () => {
         map.off('click', onClick);
         map.off('dblclick', onDblClick);
+        document.removeEventListener('keydown', onKeyDown);
+        document.removeEventListener('finish-polygon', onCustomFinish);
         map.doubleClickZoom.enable();
         map.getContainer().style.cursor = '';
         
