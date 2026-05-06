@@ -13,6 +13,8 @@ interface MapProps {
   selectedAssetId?: string;
   baseLayer?: 'normal' | 'satellite' | 'terrain';
   showTraffic?: boolean;
+  isDrawingMode?: boolean;
+  onPolygonDrawn?: (geoJson: any) => void;
 }
 
 // Fix default Leaflet icon paths
@@ -31,7 +33,9 @@ const Map: React.FC<MapProps> = ({
   routeData = null,
   assets = [],
   selectedAssetId = '',
-  baseLayer = 'normal'
+  baseLayer = 'normal',
+  isDrawingMode = false,
+  onPolygonDrawn
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
@@ -151,6 +155,66 @@ const Map: React.FC<MapProps> = ({
       // Map instance cleanup on full unmount is handled below
     };
   }, [center.lat, center.lng, zoom, geofences, history, routeData, assets, selectedAssetId, baseLayer]);
+
+  // Drawing Mode Logic
+  const drawnPointsRef = useRef<L.LatLng[]>([]);
+  const drawingLayerRef = useRef<L.Polygon | null>(null);
+  
+  useEffect(() => {
+    if (!mapInstance.current) return;
+    const map = mapInstance.current;
+    
+    if (isDrawingMode) {
+      map.getContainer().style.cursor = 'crosshair';
+      
+      const onClick = (e: L.LeafletMouseEvent) => {
+        drawnPointsRef.current.push(e.latlng);
+        if (drawingLayerRef.current) {
+          map.removeLayer(drawingLayerRef.current);
+        }
+        drawingLayerRef.current = L.polygon(drawnPointsRef.current, { 
+          color: '#ef4444', 
+          weight: 2, 
+          dashArray: '5, 5', 
+          fillOpacity: 0.2 
+        }).addTo(map);
+      };
+      
+      const onDblClick = (e: L.LeafletMouseEvent) => {
+        L.DomEvent.stopPropagation(e);
+        if (drawnPointsRef.current.length >= 3 && onPolygonDrawn) {
+          const coords = drawnPointsRef.current.map(p => [p.lng, p.lat]);
+          coords.push([drawnPointsRef.current[0].lng, drawnPointsRef.current[0].lat]); // close
+          
+          const geoJson = {
+            type: 'Polygon',
+            coordinates: [coords]
+          };
+          onPolygonDrawn(geoJson);
+        }
+        // Reset
+        drawnPointsRef.current = [];
+        if (drawingLayerRef.current) map.removeLayer(drawingLayerRef.current);
+        drawingLayerRef.current = null;
+      };
+
+      map.on('click', onClick);
+      map.on('dblclick', onDblClick);
+      map.doubleClickZoom.disable();
+
+      return () => {
+        map.off('click', onClick);
+        map.off('dblclick', onDblClick);
+        map.doubleClickZoom.enable();
+        map.getContainer().style.cursor = '';
+        
+        // Cleanup drawing if aborted
+        drawnPointsRef.current = [];
+        if (drawingLayerRef.current) map.removeLayer(drawingLayerRef.current);
+        drawingLayerRef.current = null;
+      };
+    }
+  }, [isDrawingMode, onPolygonDrawn]);
 
   // Full cleanup
   useEffect(() => {

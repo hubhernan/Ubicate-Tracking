@@ -3,7 +3,7 @@ import Map from './components/Map/Map';
 import Login from './components/Login';
 import { useLocation } from './hooks/useLocation';
 import { useSocket } from './hooks/useSocket';
-import { getGeofences, getHistory, calculateRoute, updateAssetMode, getAssets, createAsset } from './services/api';
+import { getGeofences, getHistory, calculateRoute, updateAssetMode, getAssets, createAsset, createGeofence } from './services/api';
 import { 
   Activity, 
   Map as MapIcon, 
@@ -36,11 +36,11 @@ const HERE_API_KEY = 'Xas3A0ZG88Y2g0DxgB8x';
 const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [user, setUser] = useState<any>(null);
-  const [viewMode, setViewMode] = useState<'live' | 'history' | 'routing'>('live');
   const [geofences, setGeofences] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [fleet, setFleet] = useState<any[]>([]);
   const [selectedAssetId, setSelectedAssetId] = useState<string>('');
+  const [viewMode, setViewMode] = useState<'live' | 'history' | 'routing' | 'geofences'>('live');
   const [routeData, setRouteData] = useState<any>(null);
   const [baseLayer, setBaseLayer] = useState<'normal' | 'satellite' | 'terrain'>('normal');
   const [showTraffic, setShowTraffic] = useState(false);
@@ -51,6 +51,10 @@ const App: React.FC = () => {
   const { coords, error } = useLocation();
   const [showAssetModal, setShowAssetModal] = useState(false);
   const [newAsset, setNewAsset] = useState({ name: '', type: 'vehicle' });
+  const [isDrawingMode, setIsDrawingMode] = useState(false);
+  const [showGeofenceModal, setShowGeofenceModal] = useState(false);
+  const [newGeofenceGeoJSON, setNewGeofenceGeoJSON] = useState<any>(null);
+  const [geofenceName, setGeofenceName] = useState('');
   const { emit, on, socket } = useSocket(import.meta.env.VITE_SOCKET_URL || 'https://ubicate-server.onrender.com');
 
   useEffect(() => {
@@ -154,6 +158,27 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSaveGeofence = async () => {
+    try {
+      const created = await createGeofence({
+        name: geofenceName,
+        description: '',
+        geometry: newGeofenceGeoJSON,
+        type: 'polygon'
+      });
+      setGeofences(prev => [...prev, created]);
+      setShowGeofenceModal(false);
+      setGeofenceName('');
+      setNewGeofenceGeoJSON(null);
+      addNotification('Geofence created successfully!', 'info');
+      // Refetch to get formatted geometry
+      getGeofences().then(setGeofences);
+    } catch (err) {
+      console.error(err);
+      addNotification('Failed to save geofence', 'warning');
+    }
+  };
+
   const handleCalculateRoute = async () => {
     if (!coords) return;
     try {
@@ -232,7 +257,13 @@ const App: React.FC = () => {
             collapsed={!isSidebarOpen} 
             onClick={() => setViewMode('routing')}
           />
-          <NavItem icon={<Shield size={22} />} label="Geofences" collapsed={!isSidebarOpen} />
+          <NavItem 
+            icon={<Shield size={22} />} 
+            label="Geofences" 
+            active={viewMode === 'geofences'}
+            collapsed={!isSidebarOpen} 
+            onClick={() => setViewMode('geofences')}
+          />
           <NavItem icon={<Activity size={22} />} label="Analytics" collapsed={!isSidebarOpen} />
         </nav>
 
@@ -350,6 +381,12 @@ const App: React.FC = () => {
             selectedAssetId={selectedAssetId}
             baseLayer={baseLayer}
             showTraffic={showTraffic}
+            isDrawingMode={isDrawingMode}
+            onPolygonDrawn={(geoJson) => {
+              setNewGeofenceGeoJSON(geoJson);
+              setShowGeofenceModal(true);
+              setIsDrawingMode(false);
+            }}
           />
         </div>
 
@@ -427,6 +464,37 @@ const App: React.FC = () => {
                   </div>
                 </div>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* Geofences Panel */}
+        {viewMode === 'geofences' && (
+          <div className="absolute top-20 left-8 w-80 bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 shadow-2xl z-10 animate-in slide-in-from-left-4">
+            <h3 className="font-bold text-white mb-4 flex items-center gap-2"><Shield size={18} /> Geofences</h3>
+            <p className="text-xs text-slate-400 mb-4">
+              Geofences trigger alerts when assets cross their boundaries.
+            </p>
+            <div className="space-y-2 mb-4 max-h-40 overflow-y-auto">
+              {geofences.map(gf => (
+                <div key={gf.id} className="p-2 bg-slate-800 rounded-lg text-sm flex items-center justify-between">
+                  <span className="text-white">{gf.name}</span>
+                </div>
+              ))}
+              {geofences.length === 0 && <p className="text-xs text-slate-500">No geofences found.</p>}
+            </div>
+            {isDrawingMode ? (
+               <div className="bg-amber-500/20 text-amber-500 p-3 rounded-lg text-xs font-bold border border-amber-500/50">
+                 Haz clic en el mapa para dibujar puntos. Doble-clic para finalizar el polígono.
+                 <button onClick={() => setIsDrawingMode(false)} className="mt-2 block w-full text-center py-2 bg-slate-800 text-slate-300 rounded hover:bg-slate-700 transition-colors">Cancelar</button>
+               </div>
+            ) : (
+               <button 
+                 onClick={() => setIsDrawingMode(true)}
+                 className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
+               >
+                 <Plus size={16} /> Crear Geocerca
+               </button>
             )}
           </div>
         )}
@@ -513,6 +581,29 @@ const App: React.FC = () => {
                 <div className="flex justify-end gap-3 mt-6">
                   <button onClick={() => setShowAssetModal(false)} className="px-4 py-2 rounded-lg font-bold text-slate-400 hover:bg-slate-800 transition-colors">Cancel</button>
                   <button onClick={handleAddAsset} disabled={!newAsset.name} className="px-4 py-2 rounded-lg font-bold bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50 transition-colors">Save Asset</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showGeofenceModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
+            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-96 shadow-2xl">
+              <h2 className="text-xl font-bold mb-4 text-white">Save Geofence</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs text-slate-500 uppercase font-bold">Geofence Name</label>
+                  <input 
+                    value={geofenceName}
+                    onChange={(e) => setGeofenceName(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white mt-1 focus:outline-none focus:border-brand-500" 
+                    placeholder="e.g. Headquarters"
+                  />
+                </div>
+                <div className="flex justify-end gap-3 mt-6">
+                  <button onClick={() => { setShowGeofenceModal(false); setNewGeofenceGeoJSON(null); }} className="px-4 py-2 rounded-lg font-bold text-slate-400 hover:bg-slate-800 transition-colors">Cancel</button>
+                  <button onClick={handleSaveGeofence} disabled={!geofenceName} className="px-4 py-2 rounded-lg font-bold bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50 transition-colors">Save</button>
                 </div>
               </div>
             </div>
