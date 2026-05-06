@@ -132,15 +132,25 @@ const App: React.FC = () => {
   };
 
   const fetchHistory = async () => {
-    if (!socket?.id) return;
+    if (!selectedAssetId) {
+      addNotification('Por favor, selecciona un activo de la flota primero', 'warning');
+      return;
+    }
+    
     const end = new Date().toISOString();
     const start = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(); // Last 24h
     try {
-      const data = await getHistory(socket.id, start, end);
+      const data = await getHistory(selectedAssetId, start, end);
       setHistory(data);
       setViewMode('history');
+      if (data.length === 0) {
+        addNotification('No se encontró historial en las últimas 24h', 'info');
+      } else {
+        addNotification(`Historial cargado: ${data.length} puntos`, 'info');
+      }
     } catch (err) {
       console.error(err);
+      addNotification('Error al cargar historial', 'warning');
     }
   };
 
