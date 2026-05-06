@@ -77,8 +77,8 @@ io.on('connection', (socket) => {
       }
     }
 
-    // Always broadcast so clients can see it move
-    socket.broadcast.emit('location-updated', {
+    // Always broadcast so ALL clients (including sender) can see it move
+    io.emit('location-updated', {
       id: assetId || socket.id,
       ...data
     });
