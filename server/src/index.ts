@@ -45,14 +45,15 @@ io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
   socket.on('update-location', async (data) => {
-    // Broadcast to others (for real-time tracking)
-    console.log('Location update from', socket.id, data);
+    // Determine the assetId to use
+    const assetId = data.assetId;
     
-    // Check geofences
-    if (data.lat && data.lng) {
-      // Persist position (using socket.id as temporary asset_id)
+    const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(assetId);
+
+    // Check geofences and save position only if it's a real asset
+    if (data.lat && data.lng && isValidUUID) {
       await savePosition(
-        socket.id, 
+        assetId, 
         data.lat, 
         data.lng, 
         data.speed || 0, 
@@ -61,7 +62,7 @@ io.on('connection', (socket) => {
       );
 
       // Check Speed Limit
-      const config = await getAssetConfig(socket.id);
+      const config = await getAssetConfig(assetId);
       if (config && data.speed > config.speed_limit) {
         socket.emit('speeding-alert', { 
           speed: data.speed, 
@@ -70,15 +71,15 @@ io.on('connection', (socket) => {
         });
       }
 
-      const activeGeofences = await checkPosition(socket.id, data.lat, data.lng);
+      const activeGeofences = await checkPosition(assetId, data.lat, data.lng);
       if (activeGeofences.length > 0) {
-        console.log(`Asset ${socket.id} is inside:`, activeGeofences.map(g => g.name).join(', '));
         socket.emit('geofence-breach', { geofences: activeGeofences });
       }
     }
 
+    // Always broadcast so clients can see it move
     socket.broadcast.emit('location-updated', {
-      id: socket.id,
+      id: assetId || socket.id,
       ...data
     });
   });

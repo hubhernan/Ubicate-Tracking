@@ -65,6 +65,24 @@ const App: React.FC = () => {
     on('speeding-alert', (data: any) => {
       addNotification(`Speed limit exceeded! ${data.speed.toFixed(1)} km/h in ${data.mode} mode.`, 'warning');
     });
+
+    on('location-updated', (data: any) => {
+      if (!data.id) return;
+      setFleet(prevFleet => {
+        const index = prevFleet.findIndex(a => a.id === data.id);
+        if (index > -1) {
+          const newFleet = [...prevFleet];
+          newFleet[index] = { 
+            ...newFleet[index], 
+            lat: data.lat, 
+            lng: data.lng, 
+            status: data.status 
+          };
+          return newFleet;
+        }
+        return prevFleet;
+      });
+    });
   }, [on]);
 
   const addNotification = (text: string, type: 'info' | 'warning' = 'info') => {
@@ -146,6 +164,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (coords && user) {
       emit('update-location', {
+        assetId: selectedAssetId || undefined,
         lat: coords.latitude,
         lng: coords.longitude,
         speed: coords.speed,
@@ -155,7 +174,7 @@ const App: React.FC = () => {
         status: 'moving'
       });
     }
-  }, [coords, emit, user]);
+  }, [coords, emit, user, selectedAssetId]);
 
   if (!user) {
     return <Login onLogin={setUser} />;
@@ -421,10 +440,12 @@ const App: React.FC = () => {
             <div className="flex justify-between items-start mb-4">
               <div>
                 <h3 className="font-bold text-white">My Device</h3>
-                <p className="text-xs text-slate-400">Active Tracking</p>
+                <p className="text-xs text-slate-400">
+                  {selectedAssetId ? 'Simulating Asset' : 'Standby Mode'}
+                </p>
               </div>
               <div className="px-2 py-1 rounded bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase tracking-wider">
-                Moving
+                {selectedAssetId ? 'Transmitting' : 'Moving'}
               </div>
             </div>
             
