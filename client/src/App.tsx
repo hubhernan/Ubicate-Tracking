@@ -551,50 +551,52 @@ const App: React.FC = () => {
         </div>
 
         {/* Floating Status Card */}
-        {coords && (
-          <div className="absolute bottom-8 right-8 w-64 bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 shadow-2xl z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="font-bold text-white">My Device</h3>
-                <p className="text-xs text-slate-400">
-                  {isTransmitting ? 'Transmitting' : 'Standby Mode'}
-                </p>
-              </div>
-              <div className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${isTransmitting ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-500/10 text-slate-400'}`}>
-                {isTransmitting ? 'LIVE' : 'IDLE'}
-              </div>
+        <div className="absolute bottom-8 right-8 w-64 bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 shadow-2xl z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h3 className="font-bold text-white">My Device</h3>
+              <p className="text-xs text-slate-400">
+                {isTransmitting ? 'Transmitting' : 'Standby Mode'}
+              </p>
             </div>
-            
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <p className="text-[10px] text-slate-500 uppercase font-bold">Speed</p>
-                <p className="text-lg font-bold text-white">{(coords.speed || 0).toFixed(1)} <span className="text-xs font-normal text-slate-400">km/h</span></p>
-              </div>
-              <div>
-                <p className="text-[10px] text-slate-500 uppercase font-bold">Accuracy</p>
-                <p className="text-lg font-bold text-white">{(coords.accuracy || 0).toFixed(0)} <span className="text-xs font-normal text-slate-400">m</span></p>
-              </div>
-            </div>
-
-            <button 
-              onClick={() => {
-                if (!selectedAssetId && !isTransmitting) {
-                  addNotification('Selecciona un activo de la flota primero', 'warning');
-                  return;
-                }
-                setIsTransmitting(!isTransmitting);
-              }}
-              className={`w-full py-2 rounded-lg font-bold text-sm transition-colors flex justify-center items-center gap-2 ${isTransmitting ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30' : 'bg-brand-500 text-white hover:bg-brand-600'}`}
-            >
-              {isTransmitting ? 'Detener Transmisión' : 'Transmitir Ubicación'}
-            </button>
-
-            <div className="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-500">
-              <span>LAT: {coords.latitude.toFixed(4)}</span>
-              <span>LNG: {coords.longitude.toFixed(4)}</span>
+            <div className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${isTransmitting ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-500/10 text-slate-400'}`}>
+              {isTransmitting ? 'LIVE' : 'IDLE'}
             </div>
           </div>
-        )}
+          
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <p className="text-[10px] text-slate-500 uppercase font-bold">Speed</p>
+              <p className="text-lg font-bold text-white">{(coords?.speed || 0).toFixed(1)} <span className="text-xs font-normal text-slate-400">km/h</span></p>
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-500 uppercase font-bold">Accuracy</p>
+              <p className="text-lg font-bold text-white">{(coords?.accuracy || 0).toFixed(0)} <span className="text-xs font-normal text-slate-400">m</span></p>
+            </div>
+          </div>
+
+          <button 
+            onClick={() => {
+              if (!coords && !isTransmitting) {
+                addNotification('Esperando señal GPS...', 'warning');
+                return;
+              }
+              if (!selectedAssetId && !isTransmitting) {
+                addNotification('Selecciona un activo de la flota primero', 'warning');
+                return;
+              }
+              setIsTransmitting(!isTransmitting);
+            }}
+            className={`w-full py-2 rounded-lg font-bold text-sm transition-colors flex justify-center items-center gap-2 ${isTransmitting ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30' : 'bg-brand-500 text-white hover:bg-brand-600'}`}
+          >
+            {isTransmitting ? 'Detener Transmisión' : 'Transmitir Ubicación'}
+          </button>
+
+          <div className="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-500">
+            <span>LAT: {coords ? coords.latitude.toFixed(4) : '--.----'}</span>
+            <span>LNG: {coords ? coords.longitude.toFixed(4) : '--.----'}</span>
+          </div>
+        </div>
 
         {error && (
           <div className="absolute top-20 right-8 bg-red-500/10 border border-red-500/50 text-red-500 rounded-lg px-4 py-2 text-xs flex items-center gap-2 z-10">
