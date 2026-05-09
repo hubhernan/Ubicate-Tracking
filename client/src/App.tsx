@@ -51,6 +51,7 @@ const App: React.FC = () => {
   const [notifications, setNotifications] = useState<{ id: number; text: string; type: 'info' | 'warning' }[]>([]);
   const { coords, error } = useLocation();
   const [showAssetModal, setShowAssetModal] = useState(false);
+  const [isTransmitting, setIsTransmitting] = useState(false);
   const [newAsset, setNewAsset] = useState({ name: '', type: 'vehicle' });
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [showGeofenceModal, setShowGeofenceModal] = useState(false);
@@ -221,19 +222,19 @@ const App: React.FC = () => {
     }
   };
   useEffect(() => {
-    if (coords && user) {
+    if (coords && user && isTransmitting && selectedAssetId) {
       emit('update-location', {
-        assetId: selectedAssetId || undefined,
+        assetId: selectedAssetId,
         lat: coords.latitude,
         lng: coords.longitude,
-        speed: coords.speed,
-        heading: coords.heading,
-        accuracy: coords.accuracy,
-        battery: 85, // Mock battery
+        speed: coords.speed || 0,
+        heading: coords.heading || 0,
+        accuracy: coords.accuracy || 0,
+        battery: 85, // Mock battery for now
         status: 'moving'
       });
     }
-  }, [coords, emit, user, selectedAssetId]);
+  }, [coords, emit, user, selectedAssetId, isTransmitting]);
 
   if (!user) {
     return <Login onLogin={setUser} />;
@@ -556,15 +557,15 @@ const App: React.FC = () => {
               <div>
                 <h3 className="font-bold text-white">My Device</h3>
                 <p className="text-xs text-slate-400">
-                  {selectedAssetId ? 'Simulating Asset' : 'Standby Mode'}
+                  {isTransmitting ? 'Transmitting' : 'Standby Mode'}
                 </p>
               </div>
-              <div className="px-2 py-1 rounded bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase tracking-wider">
-                {selectedAssetId ? 'Transmitting' : 'Moving'}
+              <div className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${isTransmitting ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-500/10 text-slate-400'}`}>
+                {isTransmitting ? 'LIVE' : 'IDLE'}
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
                 <p className="text-[10px] text-slate-500 uppercase font-bold">Speed</p>
                 <p className="text-lg font-bold text-white">{(coords.speed || 0).toFixed(1)} <span className="text-xs font-normal text-slate-400">km/h</span></p>
@@ -574,6 +575,19 @@ const App: React.FC = () => {
                 <p className="text-lg font-bold text-white">{(coords.accuracy || 0).toFixed(0)} <span className="text-xs font-normal text-slate-400">m</span></p>
               </div>
             </div>
+
+            <button 
+              onClick={() => {
+                if (!selectedAssetId && !isTransmitting) {
+                  addNotification('Selecciona un activo de la flota primero', 'warning');
+                  return;
+                }
+                setIsTransmitting(!isTransmitting);
+              }}
+              className={`w-full py-2 rounded-lg font-bold text-sm transition-colors flex justify-center items-center gap-2 ${isTransmitting ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30' : 'bg-brand-500 text-white hover:bg-brand-600'}`}
+            >
+              {isTransmitting ? 'Detener Transmisión' : 'Transmitir Ubicación'}
+            </button>
 
             <div className="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-500">
               <span>LAT: {coords.latitude.toFixed(4)}</span>
