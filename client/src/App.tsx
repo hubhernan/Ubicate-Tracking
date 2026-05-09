@@ -4,7 +4,7 @@ import Login from './components/Login';
 import AnalyticsPanel from './components/AnalyticsPanel';
 import { useLocation } from './hooks/useLocation';
 import { useSocket } from './hooks/useSocket';
-import { getGeofences, getHistory, calculateRoute, updateAssetMode, getAssets, createAsset, createGeofence, deleteAsset, updateAsset } from './services/api';
+import { getGeofences, getHistory, calculateRoute, updateAssetMode, getAssets, createAsset, createGeofence, deleteAsset, updateAsset, getUserGroups, createGroup, joinGroup, getGroupMembers } from './services/api';
 import { 
   Activity, 
   Map as MapIcon, 
@@ -29,7 +29,10 @@ import {
   Globe,
   Wind,
   Trash2,
-  Edit2
+  Edit2,
+  Users,
+  Copy,
+  Check
 } from 'lucide-react';
 
 const HERE_API_KEY = 'Xas3A0ZG88Y2g0DxgB8x';
@@ -43,7 +46,7 @@ const App: React.FC = () => {
   const [history, setHistory] = useState<any[]>([]);
   const [fleet, setFleet] = useState<any[]>([]);
   const [selectedAssetId, setSelectedAssetId] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'live' | 'history' | 'routing' | 'geofences' | 'analytics'>('live');
+  const [viewMode, setViewMode] = useState<'live' | 'history' | 'routing' | 'geofences' | 'analytics' | 'groups'>('live');
   const [routeData, setRouteData] = useState<any>(null);
   const [baseLayer, setBaseLayer] = useState<'normal' | 'satellite' | 'terrain'>('normal');
   const [showTraffic, setShowTraffic] = useState(false);
@@ -62,11 +65,23 @@ const App: React.FC = () => {
   const [showGeofenceModal, setShowGeofenceModal] = useState(false);
   const [newGeofenceGeoJSON, setNewGeofenceGeoJSON] = useState<any>(null);
   const [geofenceName, setGeofenceName] = useState('');
+  
+  // Groups State
+  const [userGroups, setUserGroups] = useState<any[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [groupMembers, setGroupMembers] = useState<any[]>([]);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [inviteCodeToJoin, setInviteCodeToJoin] = useState('');
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
   const { emit, on, socket } = useSocket(import.meta.env.VITE_SOCKET_URL || 'https://ubicate-server.onrender.com');
 
   useEffect(() => {
     getGeofences().then(setGeofences).catch(console.error);
     getAssets().then(setFleet).catch(console.error);
+    if (user?.id) {
+      fetchGroups();
+    }
 
     on('geofence-breach', (data: any) => {
       const names = data.geofences.map((g: any) => g.name).join(', ');
@@ -188,6 +203,53 @@ const App: React.FC = () => {
       console.error(err);
       addNotification('Error al cargar historial', 'warning');
     }
+  };
+
+  const fetchGroups = async () => {
+    if (!user?.id) return;
+    try {
+      const groups = await getUserGroups(user.id);
+      setUserGroups(groups);
+      if (groups.length > 0 && !selectedGroupId) {
+        setSelectedGroupId(groups[0].id);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedGroupId) {
+      getGroupMembers(selectedGroupId).then(setGroupMembers).catch(console.error);
+    }
+  }, [selectedGroupId]);
+
+  const handleCreateGroup = async () => {
+    try {
+      await createGroup(newGroupName, user.id);
+      addNotification('Familia creada correctamente', 'info');
+      setNewGroupName('');
+      fetchGroups();
+    } catch (err: any) {
+      addNotification(err.response?.data?.error || 'Error al crear la familia', 'warning');
+    }
+  };
+
+  const handleJoinGroup = async () => {
+    try {
+      await joinGroup(inviteCodeToJoin, user.id);
+      addNotification('¡Te has unido a la familia!', 'info');
+      setInviteCodeToJoin('');
+      fetchGroups();
+    } catch (err: any) {
+      addNotification(err.response?.data?.error || 'Código inválido o error al unirse', 'warning');
+    }
+  };
+
+  const copyInviteCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(null), 2000);
   };
 
   const handleSaveGeofence = async () => {
@@ -347,6 +409,13 @@ const App: React.FC = () => {
             active={viewMode === 'analytics'}
             collapsed={!isSidebarOpen} 
             onClick={() => setViewMode('analytics')}
+          />
+          <NavItem 
+            icon={<Users size={22} />} 
+            label="Mi Familia" 
+            active={viewMode === 'groups'}
+            collapsed={!isSidebarOpen} 
+            onClick={() => setViewMode('groups')}
           />
         </nav>
 
@@ -605,6 +674,103 @@ const App: React.FC = () => {
                  <Plus size={16} /> Crear Geocerca
                </button>
             )}
+          </div>
+        )}
+
+        {/* Groups Panel */}
+        {viewMode === 'groups' && (
+          <div className="absolute top-24 md:top-20 left-4 md:left-8 w-[calc(100%-2rem)] md:w-96 bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 shadow-2xl z-10 animate-in slide-in-from-left-4">
+            <h3 className="font-bold text-white mb-4 flex items-center gap-2"><Users size={18} /> Mi Familia</h3>
+            <p className="text-xs text-slate-400 mb-6">
+              Administra tus grupos familiares y comparte el código para que otros se unan.
+            </p>
+            
+            {/* Create Group */}
+            <div className="bg-slate-800/50 p-4 rounded-xl mb-4 border border-slate-800">
+              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Crear Nueva Familia</h4>
+              <div className="flex gap-2">
+                <input 
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  placeholder="Ej. Familia Gómez"
+                  className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500"
+                />
+                <button 
+                  onClick={handleCreateGroup}
+                  disabled={!newGroupName}
+                  className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Crear
+                </button>
+              </div>
+            </div>
+
+            {/* Join Group */}
+            <div className="bg-slate-800/50 p-4 rounded-xl mb-6 border border-slate-800">
+              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Unirse a Familia</h4>
+              <div className="flex gap-2">
+                <input 
+                  value={inviteCodeToJoin}
+                  onChange={(e) => setInviteCodeToJoin(e.target.value.toUpperCase())}
+                  placeholder="Código de 6 dígitos"
+                  maxLength={6}
+                  className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white font-mono uppercase tracking-widest focus:outline-none focus:border-brand-500"
+                />
+                <button 
+                  onClick={handleJoinGroup}
+                  disabled={inviteCodeToJoin.length < 6}
+                  className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Unirse
+                </button>
+              </div>
+            </div>
+
+            {/* List Groups */}
+            <div className="space-y-4">
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tus Grupos</h4>
+              {userGroups.length === 0 ? (
+                <p className="text-xs text-slate-500">No perteneces a ninguna familia aún.</p>
+              ) : (
+                userGroups.map(group => (
+                  <div key={group.id} className="border border-slate-800 rounded-xl overflow-hidden">
+                    <div 
+                      onClick={() => setSelectedGroupId(group.id)}
+                      className={`p-3 flex items-center justify-between cursor-pointer transition-colors ${selectedGroupId === group.id ? 'bg-brand-500/10' : 'bg-slate-800 hover:bg-slate-700'}`}
+                    >
+                      <div className="font-bold text-sm text-white flex items-center gap-2">
+                        {group.name}
+                        {group.role === 'admin' && <span className="text-[9px] bg-brand-500/20 text-brand-400 px-1.5 py-0.5 rounded uppercase tracking-wider">Admin</span>}
+                      </div>
+                      
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); copyInviteCode(group.invite_code); }}
+                        className="flex items-center gap-1.5 text-xs font-mono bg-slate-900 text-slate-300 px-2 py-1 rounded hover:text-white hover:bg-slate-950 transition-colors"
+                        title="Copiar código de invitación"
+                      >
+                        {group.invite_code}
+                        {copiedCode === group.invite_code ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                      </button>
+                    </div>
+                    
+                    {/* Members List */}
+                    {selectedGroupId === group.id && (
+                      <div className="p-3 bg-slate-900/50 border-t border-slate-800">
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">Miembros</p>
+                        <div className="space-y-2">
+                          {groupMembers.map(member => (
+                            <div key={member.id} className="flex justify-between items-center text-xs">
+                              <span className="text-slate-300">{member.full_name}</span>
+                              <span className="text-slate-500 capitalize">{member.role}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         )}
 

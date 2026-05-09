@@ -75,3 +75,24 @@ export const deleteAsset = async (assetId: string) => {
   const response = await axios.delete(`${API_URL}/assets/${assetId}`);
   return response.data;
 };
+
+// Group / Family APIs
+export const createGroup = async (name: string, userId: string) => {
+  const response = await axios.post(`${API_URL}/groups`, { name, userId });
+  return response.data;
+};
+
+export const joinGroup = async (inviteCode: string, userId: string) => {
+  const response = await axios.post(`${API_URL}/groups/join`, { inviteCode, userId });
+  return response.data;
+};
+
+export const getUserGroups = async (userId: string) => {
+  const response = await axios.get(`${API_URL}/groups/user/${userId}`);
+  return response.data;
+};
+
+export const getGroupMembers = async (groupId: string) => {
+  const response = await axios.get(`${API_URL}/groups/${groupId}/members`);
+  return response.data;
+};
