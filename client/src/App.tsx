@@ -180,20 +180,43 @@ const App: React.FC = () => {
   };
 
   const handleCalculateRoute = async () => {
-    if (!coords) return;
+    if (!coords) {
+      addNotification('Buscando tu ubicación actual...', 'warning');
+      return;
+    }
+    if (!destination.trim()) {
+      addNotification('Por favor ingresa un destino', 'warning');
+      return;
+    }
+
     try {
-      // Mocking geocoding for destination for demo purposes
-      // In production, use HERE Geocoding API
-      const mockDest = { lat: coords.latitude + 0.05, lng: coords.longitude + 0.05 };
+      addNotification('Buscando destino...', 'info');
+      // 1. Geocode with Nominatim (OpenStreetMap)
+      const geocodeRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destination)}&limit=1`);
+      const geocodeData = await geocodeRes.json();
+
+      if (!geocodeData || geocodeData.length === 0) {
+        addNotification('Destino no encontrado. Intenta ser más específico.', 'warning');
+        return;
+      }
+
+      const destLat = parseFloat(geocodeData[0].lat);
+      const destLng = parseFloat(geocodeData[0].lon);
+
+      addNotification('Calculando ruta óptima...', 'info');
+      
+      // 2. Request Route Calculation from our backend (OSRM)
       const data = await calculateRoute({
         origin: { lat: coords.latitude, lng: coords.longitude },
-        destination: mockDest,
-        transportMode: 'car'
+        destination: { lat: destLat, lng: destLng },
+        transportMode: 'driving'
       });
       setRouteData(data);
       setViewMode('routing');
+      addNotification('¡Ruta trazada con éxito!', 'info');
     } catch (err) {
-      console.error(err);
+      console.error('Error in route calculation:', err);
+      addNotification('Error al calcular la ruta', 'warning');
     }
   };
   useEffect(() => {
@@ -432,10 +455,11 @@ const App: React.FC = () => {
                 <Search className="absolute left-3 top-2.5 text-slate-500" size={16} />
                 <input 
                   type="text" 
-                  placeholder="Where to?" 
+                  placeholder="Ej. Zócalo, CDMX..." 
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-brand-500"
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleCalculateRoute()}
                 />
               </div>
               <button 
