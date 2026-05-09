@@ -56,3 +56,34 @@ export const getAssetConfig = async (assetId: string) => {
   );
   return result.rows[0];
 };
+
+export const updateAsset = async (req: Request, res: Response) => {
+  try {
+    const { assetId } = req.params;
+    const { name, type } = req.body;
+    const result = await pool.query(
+      `UPDATE assets SET name = $1, type = $2 WHERE id = $3 RETURNING *`,
+      [name, type, assetId]
+    );
+    res.json(result.rows[0]);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const deleteAsset = async (req: Request, res: Response) => {
+  try {
+    const { assetId } = req.params;
+    
+    // First delete dependent geofence_events and positions
+    await pool.query(`DELETE FROM geofence_events WHERE asset_id = $1`, [assetId]);
+    await pool.query(`DELETE FROM positions WHERE asset_id = $1`, [assetId]);
+    
+    // Then delete the asset
+    await pool.query(`DELETE FROM assets WHERE id = $1`, [assetId]);
+    
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};

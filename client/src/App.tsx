@@ -4,7 +4,7 @@ import Login from './components/Login';
 import AnalyticsPanel from './components/AnalyticsPanel';
 import { useLocation } from './hooks/useLocation';
 import { useSocket } from './hooks/useSocket';
-import { getGeofences, getHistory, calculateRoute, updateAssetMode, getAssets, createAsset, createGeofence } from './services/api';
+import { getGeofences, getHistory, calculateRoute, updateAssetMode, getAssets, createAsset, createGeofence, deleteAsset, updateAsset } from './services/api';
 import { 
   Activity, 
   Map as MapIcon, 
@@ -27,7 +27,9 @@ import {
   Truck,
   Layers,
   Globe,
-  Wind
+  Wind,
+  Trash2,
+  Edit2
 } from 'lucide-react';
 
 const HERE_API_KEY = 'Xas3A0ZG88Y2g0DxgB8x';
@@ -51,6 +53,7 @@ const App: React.FC = () => {
   const [notifications, setNotifications] = useState<{ id: number; text: string; type: 'info' | 'warning' }[]>([]);
   const { coords, error } = useLocation();
   const [showAssetModal, setShowAssetModal] = useState(false);
+  const [editingAsset, setEditingAsset] = useState<any>(null);
   const [isTransmitting, setIsTransmitting] = useState(false);
   const [isPlayingHistory, setIsPlayingHistory] = useState(false);
   const [historyPlaybackIndex, setHistoryPlaybackIndex] = useState(0);
@@ -115,22 +118,45 @@ const App: React.FC = () => {
 
   const handleAddAsset = async () => {
     try {
-      await createAsset({
-        name: newAsset.name,
-        type: newAsset.type,
-        userId: user?.id,
-        metadata: { color: '#3b82f6' }
-      });
-      // The API returns the raw object, but it might lack ST_X/ST_Y fields,
-      // so let's refetch or just append with default status/location
+      if (editingAsset) {
+        await updateAsset(editingAsset.id, {
+          name: newAsset.name,
+          type: newAsset.type
+        });
+        addNotification('Asset updated successfully!', 'info');
+      } else {
+        await createAsset({
+          name: newAsset.name,
+          type: newAsset.type,
+          userId: user?.id,
+          metadata: { color: '#3b82f6' }
+        });
+        addNotification('Asset created successfully!', 'info');
+      }
+      
       const assetsList = await getAssets();
       setFleet(assetsList);
       setShowAssetModal(false);
+      setEditingAsset(null);
       setNewAsset({ name: '', type: 'vehicle' });
-      addNotification('Asset created successfully!', 'info');
     } catch (err) {
       console.error(err);
-      addNotification('Failed to create asset', 'warning');
+      addNotification(`Failed to ${editingAsset ? 'update' : 'create'} asset`, 'warning');
+    }
+  };
+
+  const handleDeleteAsset = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm('¿Seguro que deseas eliminar este vehículo? Esto borrará todo su historial.')) return;
+    try {
+      await deleteAsset(id);
+      addNotification('Vehículo eliminado correctamente', 'info');
+      const assetsList = await getAssets();
+      setFleet(assetsList);
+      if (selectedAssetId === id) setSelectedAssetId('');
+    } catch (err) {
+      console.error(err);
+      addNotification('Error al eliminar vehículo', 'warning');
     }
   };
 
@@ -332,7 +358,7 @@ const App: React.FC = () => {
                 <div 
                   key={asset.id} 
                   onClick={() => setSelectedAssetId(asset.id)}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer ${selectedAssetId === asset.id ? 'bg-brand-500/10 border-brand-500/50' : 'bg-slate-800/50 border-transparent hover:border-slate-700'}`}
+                  className={`group p-3 rounded-xl border transition-all cursor-pointer ${selectedAssetId === asset.id ? 'bg-brand-500/10 border-brand-500/50' : 'bg-slate-800/50 border-transparent hover:border-slate-700'}`}
                 >
                   <div className="flex items-center gap-3">
                     <div className={`p-2 rounded-lg ${asset.status === 'moving' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-slate-700 text-slate-400'}`}>
@@ -350,6 +376,27 @@ const App: React.FC = () => {
                         {asset.battery_level}%
                       </div>
                     )}
+                    <div className="flex gap-1 ml-2 opacity-50 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingAsset(asset);
+                          setNewAsset({ name: asset.name, type: asset.type || 'vehicle' });
+                          setShowAssetModal(true);
+                        }}
+                        className="p-1 hover:text-brand-500 hover:bg-brand-500/10 rounded"
+                        title="Editar"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      <button 
+                        onClick={(e) => handleDeleteAsset(asset.id, e)}
+                        className="p-1 hover:text-red-500 hover:bg-red-500/10 rounded"
+                        title="Eliminar"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -677,33 +724,35 @@ const App: React.FC = () => {
 
         {showAssetModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-96 shadow-2xl">
-              <h2 className="text-xl font-bold mb-4 text-white">Add New Asset</h2>
+            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-96 shadow-2xl animate-in zoom-in-95 duration-200">
+              <h2 className="text-xl font-bold mb-4 text-white flex items-center gap-2">
+                <Truck className="text-brand-500" /> {editingAsset ? 'Edit Asset' : 'Add New Asset'}
+              </h2>
               <div className="space-y-4">
                 <div>
                   <label className="text-xs text-slate-500 uppercase font-bold">Asset Name</label>
                   <input 
                     value={newAsset.name}
                     onChange={(e) => setNewAsset({...newAsset, name: e.target.value})}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white mt-1 focus:outline-none focus:border-brand-500" 
-                    placeholder="e.g. Delivery Truck 1"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white mt-1 focus:outline-none focus:border-brand-500 transition-colors" 
+                    placeholder="e.g. Delivery Truck 01"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500 uppercase font-bold">Asset Type</label>
+                  <label className="text-xs text-slate-500 uppercase font-bold">Type</label>
                   <select 
                     value={newAsset.type}
                     onChange={(e) => setNewAsset({...newAsset, type: e.target.value})}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white mt-1 focus:outline-none focus:border-brand-500"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white mt-1 focus:outline-none focus:border-brand-500 transition-colors"
                   >
                     <option value="vehicle">Vehicle</option>
                     <option value="person">Person</option>
                     <option value="package">Package</option>
                   </select>
                 </div>
-                <div className="flex justify-end gap-3 mt-6">
-                  <button onClick={() => setShowAssetModal(false)} className="px-4 py-2 rounded-lg font-bold text-slate-400 hover:bg-slate-800 transition-colors">Cancel</button>
-                  <button onClick={handleAddAsset} disabled={!newAsset.name} className="px-4 py-2 rounded-lg font-bold bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50 transition-colors">Save Asset</button>
+                <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-800">
+                  <button onClick={() => { setShowAssetModal(false); setEditingAsset(null); setNewAsset({name: '', type: 'vehicle'})}} className="px-4 py-2 rounded-lg font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">Cancel</button>
+                  <button onClick={handleAddAsset} disabled={!newAsset.name} className="px-6 py-2 rounded-lg font-bold bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50 transition-colors">{editingAsset ? 'Update' : 'Save Asset'}</button>
                 </div>
               </div>
             </div>

@@ -65,3 +65,13 @@ export const createAsset = async (asset: any) => {
   const response = await axios.post(`${API_URL}/assets`, asset);
   return response.data;
 };
+
+export const updateAsset = async (assetId: string, asset: any) => {
+  const response = await axios.put(`${API_URL}/assets/${assetId}`, asset);
+  return response.data;
+};
+
+export const deleteAsset = async (assetId: string) => {
+  const response = await axios.delete(`${API_URL}/assets/${assetId}`);
+  return response.data;
+};
