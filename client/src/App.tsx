@@ -180,10 +180,10 @@ const App: React.FC = () => {
   };
 
   const handleCalculateRoute = async () => {
-    if (!coords) {
-      addNotification('Buscando tu ubicación actual...', 'warning');
-      return;
-    }
+    // Si no hay coordenadas (ej. el usuario denegó la ubicación), usamos un punto por defecto (CDMX)
+    const currentLat = coords?.latitude || 19.4326;
+    const currentLng = coords?.longitude || -99.1332;
+
     if (!destination.trim()) {
       addNotification('Por favor ingresa un destino', 'warning');
       return;
@@ -207,7 +207,7 @@ const App: React.FC = () => {
       
       // 2. Request Route Calculation from our backend (OSRM)
       const data = await calculateRoute({
-        origin: { lat: coords.latitude, lng: coords.longitude },
+        origin: { lat: currentLat, lng: currentLng },
         destination: { lat: destLat, lng: destLng },
         transportMode: 'driving'
       });
