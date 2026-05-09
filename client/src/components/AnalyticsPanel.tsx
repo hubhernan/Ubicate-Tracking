@@ -123,7 +123,7 @@ const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ assets, geofences }) =>
                     paddingAngle={5}
                     dataKey="value"
                   >
-                    {fleetStatusData.map((entry, index) => (
+                    {fleetStatusData.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
