@@ -42,27 +42,34 @@ const Map: React.FC<MapProps> = ({
   const layerGroupRef = useRef<L.FeatureGroup | null>(null);
   const baseLayerRef = useRef<L.TileLayer | null>(null);
 
+  const geofenceLayerRef = useRef<L.FeatureGroup | null>(null);
+  const historyLayerRef = useRef<L.FeatureGroup | null>(null);
+  const routeLayerRef = useRef<L.FeatureGroup | null>(null);
+  const assetsLayerRef = useRef<L.FeatureGroup | null>(null);
+
+  // Initialize Map and Layer Groups
   useEffect(() => {
     if (!mapRef.current) return;
-
     if (!mapInstance.current) {
       mapInstance.current = L.map(mapRef.current, {
-        zoomControl: false // Hide default zoom to use custom UI if needed
+        zoomControl: false
       }).setView([center.lat, center.lng], zoom);
       
-      layerGroupRef.current = L.featureGroup().addTo(mapInstance.current);
+      geofenceLayerRef.current = L.featureGroup().addTo(mapInstance.current);
+      historyLayerRef.current = L.featureGroup().addTo(mapInstance.current);
+      routeLayerRef.current = L.featureGroup().addTo(mapInstance.current);
+      assetsLayerRef.current = L.featureGroup().addTo(mapInstance.current);
     }
+  }, []); // Only run once on mount
 
+  // Base Layer
+  useEffect(() => {
+    if (!mapInstance.current) return;
     const map = mapInstance.current;
+    if (baseLayerRef.current) map.removeLayer(baseLayerRef.current);
     
-    // Set Base Layer
-    if (baseLayerRef.current) {
-      map.removeLayer(baseLayerRef.current);
-    }
-
-    let tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'; // default normal
+    let tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
     let attribution = '&copy; OpenStreetMap contributors &copy; CARTO';
-
     if (baseLayer === 'satellite') {
       tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
       attribution = 'Tiles &copy; Esri';
@@ -70,31 +77,30 @@ const Map: React.FC<MapProps> = ({
       tileUrl = 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
       attribution = 'Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap';
     }
-
     baseLayerRef.current = L.tileLayer(tileUrl, { attribution, maxZoom: 19 }).addTo(map);
+  }, [baseLayer]);
 
-    // Clear dynamic layers
-    if (layerGroupRef.current) {
-      layerGroupRef.current.clearLayers();
-    }
-    const fg = layerGroupRef.current;
-
-    // Render Geofences
+  // Geofences
+  useEffect(() => {
+    const fg = geofenceLayerRef.current;
+    if (!fg) return;
+    fg.clearLayers();
     geofences.forEach(gf => {
-      if (gf.geometry && fg) {
+      if (gf.geometry) {
         L.geoJSON(gf.geometry, {
-          style: {
-            color: '#0ea5e9',
-            weight: 2,
-            fillColor: '#0ea5e9',
-            fillOpacity: 0.2
-          }
+          style: { color: '#0ea5e9', weight: 2, fillColor: '#0ea5e9', fillOpacity: 0.2 }
         }).addTo(fg);
       }
     });
+  }, [geofences]);
 
-    // Render History
-    if (history.length > 0 && fg) {
+  // History
+  useEffect(() => {
+    const fg = historyLayerRef.current;
+    const map = mapInstance.current;
+    if (!fg || !map) return;
+    fg.clearLayers();
+    if (history.length > 0) {
       const latlngs = history.map(point => {
         const coords = point.geometry?.coordinates;
         return coords ? [coords[1], coords[0]] as [number, number] : null;
@@ -102,17 +108,41 @@ const Map: React.FC<MapProps> = ({
 
       if (latlngs.length > 0) {
         const polyline = L.polyline(latlngs, { color: '#0ea5e9', weight: 4 }).addTo(fg);
-        
         L.circleMarker(latlngs[0], { radius: 6, color: '#10b981', fillOpacity: 1 }).addTo(fg);
         L.circleMarker(latlngs[latlngs.length - 1], { radius: 6, color: '#ef4444', fillOpacity: 1 }).addTo(fg);
-        
         map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
       }
     }
+  }, [history]);
 
-    // Render Assets
+  // Routes
+  useEffect(() => {
+    const fg = routeLayerRef.current;
+    const map = mapInstance.current;
+    if (!fg || !map) return;
+    fg.clearLayers();
+    if (routeData && routeData.routes && routeData.routes[0]) {
+      const route = routeData.routes[0];
+      if (route.geometry) {
+        L.geoJSON(route.geometry, {
+          style: { color: '#8b5cf6', weight: 6, opacity: 0.8 }
+        }).addTo(fg);
+        const coords = route.geometry.coordinates;
+        if (coords && coords.length > 0) {
+          map.fitBounds(L.geoJSON(route.geometry).getBounds(), { padding: [50, 50] });
+        }
+      }
+    }
+  }, [routeData]);
+
+  // Assets
+  useEffect(() => {
+    const fg = assetsLayerRef.current;
+    const map = mapInstance.current;
+    if (!fg || !map) return;
+    fg.clearLayers();
     assets.forEach(asset => {
-      if (asset.lat && asset.lng && fg) {
+      if (asset.lat && asset.lng) {
         const isSelected = asset.id === selectedAssetId;
         const color = asset.status === 'moving' ? '#10b981' : '#64748b';
         
@@ -127,34 +157,11 @@ const Map: React.FC<MapProps> = ({
         marker.bindTooltip(`<b>${asset.name}</b><br/>${asset.status}`, { direction: 'top', offset: [0, -10] });
 
         if (isSelected) {
-          map.setView([asset.lat, asset.lng], 16);
+          map.panTo([asset.lat, asset.lng], { animate: true });
         }
       }
     });
-
-    // Render Route (from OSRM GeoJSON geometry)
-    if (routeData && routeData.routes && routeData.routes[0] && fg) {
-      const route = routeData.routes[0];
-      if (route.geometry) {
-        L.geoJSON(route.geometry, {
-          style: {
-            color: '#8b5cf6',
-            weight: 6,
-            opacity: 0.8
-          }
-        }).addTo(fg);
-        
-        const coords = route.geometry.coordinates;
-        if (coords && coords.length > 0) {
-          map.fitBounds(L.geoJSON(route.geometry).getBounds(), { padding: [50, 50] });
-        }
-      }
-    }
-
-    return () => {
-      // Map instance cleanup on full unmount is handled below
-    };
-  }, [center.lat, center.lng, zoom, geofences, history, routeData, assets, selectedAssetId, baseLayer]);
+  }, [assets, selectedAssetId]);
 
   // Drawing Mode Logic
   const drawnPointsRef = useRef<L.LatLng[]>([]);
