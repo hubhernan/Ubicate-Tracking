@@ -40,7 +40,7 @@ const HERE_API_KEY = 'Xas3A0ZG88Y2g0DxgB8x';
 
 
 const App: React.FC = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
   const [user, setUser] = useState<any>(null);
   const [geofences, setGeofences] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
@@ -352,7 +352,10 @@ const App: React.FC = () => {
   return (
     <div className="flex h-screen w-full bg-slate-950 overflow-hidden text-slate-200">
       {/* Sidebar */}
-      <aside className={`${isSidebarOpen ? 'w-full md:w-80' : 'w-20'} bg-slate-900/95 backdrop-blur-xl border-r border-slate-800 transition-all duration-300 flex flex-col z-50 absolute md:relative h-full`}>
+      <aside className={`
+        ${isSidebarOpen ? 'translate-x-0 w-full md:w-80' : '-translate-x-full md:translate-x-0 w-full md:w-20'} 
+        bg-slate-900/95 backdrop-blur-xl border-r border-slate-800 transition-transform duration-300 flex flex-col z-50 absolute md:relative h-full
+      `}>
         <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800">
           {isSidebarOpen ? (
             <div className="flex items-center gap-3 text-white font-bold text-xl">
@@ -362,7 +365,7 @@ const App: React.FC = () => {
               Ubicate
             </div>
           ) : (
-            <div className="p-2 bg-brand-500 rounded-lg mx-auto text-white">
+            <div className="hidden md:block p-2 bg-brand-500 rounded-lg mx-auto text-white">
               <Navigation size={20} />
             </div>
           )}
@@ -370,7 +373,7 @@ const App: React.FC = () => {
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="text-slate-400 hover:text-white transition-colors"
           >
-            {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+            {isSidebarOpen ? <X size={20} /> : <Menu size={20} className="hidden md:block" />}
           </button>
         </div>
 
@@ -486,9 +489,19 @@ const App: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 flex flex-col relative w-full overflow-hidden">
         {/* Header */}
-        <header className="h-auto min-h-[4rem] bg-slate-900/50 backdrop-blur-md border-b border-slate-800 flex flex-col md:flex-row items-center justify-between px-4 md:px-6 py-2 md:py-0 z-10 absolute top-0 left-0 right-0 gap-2 md:gap-0 pl-20 md:pl-6">
+        <header className="h-auto min-h-[4rem] bg-slate-900/50 backdrop-blur-md border-b border-slate-800 flex flex-col md:flex-row items-center justify-between px-4 md:px-6 py-2 md:py-0 z-40 absolute top-0 left-0 right-0 gap-2 md:gap-0">
           <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-between md:justify-start">
-            <h2 className="text-xs md:text-sm font-medium text-slate-400">Global Overview</h2>
+            <div className="flex items-center gap-2">
+              {!isSidebarOpen && (
+                <button 
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="md:hidden p-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
+                >
+                  <Menu size={20} />
+                </button>
+              )}
+              <h2 className="text-xs md:text-sm font-medium text-slate-400">Global Overview</h2>
+            </div>
             <div className="hidden md:block h-4 w-px bg-slate-800" />
             <div className="flex items-center gap-2 text-emerald-400 text-[10px] md:text-xs font-mono">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
