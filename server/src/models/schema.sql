@@ -71,3 +71,23 @@ CREATE TABLE geofence_events (
     event_type VARCHAR(20) NOT NULL, -- 'enter', 'exit'
     captured_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- 6. Monitoring Groups (Families / Fleets)
+CREATE TABLE groups (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    invite_code VARCHAR(10) UNIQUE NOT NULL,
+    created_by UUID REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE group_members (
+    group_id UUID REFERENCES groups(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    role VARCHAR(20) DEFAULT 'member', -- 'admin', 'member'
+    joined_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (group_id, user_id)
+);
+
+-- Associate assets to a group (so all group members can see them)
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS group_id UUID REFERENCES groups(id) ON DELETE CASCADE;
