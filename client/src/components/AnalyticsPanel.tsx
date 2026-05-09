@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Activity, Shield, TrendingUp, Truck } from 'lucide-react';
+import { getWeeklyAnalytics } from '../services/api';
 
 interface AnalyticsPanelProps {
   assets: any[];
@@ -19,16 +20,34 @@ const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ assets, geofences }) =>
 
   const COLORS = ['#10b981', '#64748b'];
 
-  // Mock data for weekly distance (this could be pulled from the API history endpoint in the future)
-  const weeklyDistanceData = [
-    { name: 'Lun', km: 120 },
-    { name: 'Mar', km: 210 },
-    { name: 'Mie', km: 180 },
-    { name: 'Jue', km: 240 },
-    { name: 'Vie', km: 290 },
-    { name: 'Sab', km: 150 },
-    { name: 'Dom', km: 90 },
-  ];
+  const [weeklyDistanceData, setWeeklyDistanceData] = useState([
+    { name: 'Mon', distance: 0 },
+    { name: 'Tue', distance: 0 },
+    { name: 'Wed', distance: 0 },
+    { name: 'Thu', distance: 0 },
+    { name: 'Fri', distance: 0 },
+    { name: 'Sat', distance: 0 },
+    { name: 'Sun', distance: 0 },
+  ]);
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        const data = await getWeeklyAnalytics();
+        if (data && data.length > 0) {
+          // Format distances to 1 decimal place
+          const formattedData = data.map((d: any) => ({
+            name: d.name,
+            distance: parseFloat(d.distance).toFixed(1)
+          }));
+          setWeeklyDistanceData(formattedData);
+        }
+      } catch (err) {
+        console.error('Failed to load weekly analytics', err);
+      }
+    };
+    fetchAnalytics();
+  }, []);
 
   return (
     <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-xl z-20 overflow-y-auto p-8 animate-in fade-in duration-300">
@@ -105,7 +124,7 @@ const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ assets, geofences }) =>
                     contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px', color: '#fff' }}
                     itemStyle={{ color: '#fff' }}
                   />
-                  <Bar dataKey="km" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="distance" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

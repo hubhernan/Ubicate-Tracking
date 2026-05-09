@@ -41,7 +41,6 @@ const Map: React.FC<MapProps> = ({
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
-  const layerGroupRef = useRef<L.FeatureGroup | null>(null);
   const baseLayerRef = useRef<L.TileLayer | null>(null);
 
   const geofenceLayerRef = useRef<L.FeatureGroup | null>(null);

@@ -41,6 +41,11 @@ export const getHistory = async (assetId: string, start: string, end: string) =>
   return response.data;
 };
 
+export const getWeeklyAnalytics = async () => {
+  const response = await axios.get(`${API_URL}/history/analytics/weekly`);
+  return response.data;
+};
+
 export const calculateRoute = async (params: any) => {
   const response = await axios.post(`${API_URL}/routing/calculate`, params);
   return response.data;

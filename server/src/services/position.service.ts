@@ -38,3 +38,37 @@ export const getHistory = async (assetId: string, start: string, end: string) =>
     return [];
   }
 };
+
+export const getWeeklyAnalytics = async () => {
+  try {
+    const result = await pool.query(
+      `WITH last_7_days AS (
+          SELECT (CURRENT_DATE - i) AS date_val, TO_CHAR(CURRENT_DATE - i, 'Dy') as name
+          FROM generate_series(0, 6) i
+      ),
+      daily_asset_lines AS (
+          SELECT 
+              DATE(captured_at) as date_val,
+              asset_id,
+              CASE 
+                  WHEN COUNT(*) > 1 THEN ST_MakeLine(geom ORDER BY captured_at ASC)
+                  ELSE NULL 
+              END as line_geom
+          FROM positions
+          WHERE captured_at >= CURRENT_DATE - INTERVAL '6 days'
+          GROUP BY DATE(captured_at), asset_id
+      )
+      SELECT 
+          d.name,
+          COALESCE(SUM(ST_Length(al.line_geom::geography) / 1000), 0) as distance
+      FROM last_7_days d
+      LEFT JOIN daily_asset_lines al ON d.date_val = al.date_val
+      GROUP BY d.date_val, d.name
+      ORDER BY d.date_val ASC;`
+    );
+    return result.rows;
+  } catch (error) {
+    console.error('Error fetching weekly analytics:', error);
+    return [];
+  }
+};

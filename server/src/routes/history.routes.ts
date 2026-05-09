@@ -1,7 +1,16 @@
 import { Router } from 'express';
-import { getHistory } from '../services/position.service';
+import { getHistory, getWeeklyAnalytics } from '../services/position.service';
 
 const router = Router();
+
+router.get('/analytics/weekly', async (req, res) => {
+  try {
+    const data = await getWeeklyAnalytics();
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 router.get('/:assetId', async (req, res) => {
   try {
