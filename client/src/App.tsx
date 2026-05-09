@@ -290,19 +290,24 @@ const App: React.FC = () => {
   return (
     <div className="flex h-screen w-full bg-slate-950 overflow-hidden text-slate-200">
       {/* Sidebar */}
-      <aside className={`
-        ${isSidebarOpen ? 'w-80' : 'w-20'} 
-        transition-all duration-300 ease-in-out
-        bg-slate-900 border-r border-slate-800 flex flex-col z-20
-      `}>
-        <div className="p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-brand-500 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/20">
-              <Navigation className="text-white w-6 h-6" />
+      <aside className={`${isSidebarOpen ? 'w-full md:w-80' : 'w-20'} bg-slate-900/95 backdrop-blur-xl border-r border-slate-800 transition-all duration-300 flex flex-col z-50 absolute md:relative h-full`}>
+        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800">
+          {isSidebarOpen ? (
+            <div className="flex items-center gap-3 text-white font-bold text-xl">
+              <div className="p-2 bg-brand-500 rounded-lg">
+                <Navigation size={20} />
+              </div>
+              Ubicate
             </div>
-            {isSidebarOpen && <h1 className="text-xl font-bold tracking-tight">Ubicate</h1>}
-          </div>
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 hover:bg-slate-800 rounded-lg">
+          ) : (
+            <div className="p-2 bg-brand-500 rounded-lg mx-auto text-white">
+              <Navigation size={20} />
+            </div>
+          )}
+          <button 
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="text-slate-400 hover:text-white transition-colors"
+          >
             {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
@@ -410,60 +415,62 @@ const App: React.FC = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col relative">
+      <main className="flex-1 flex flex-col relative w-full overflow-hidden">
         {/* Header */}
-        <header className="h-16 bg-slate-900/50 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-6 z-10 absolute top-0 left-0 right-0">
-          <div className="flex items-center gap-4">
-            <h2 className="text-sm font-medium text-slate-400">Global Overview</h2>
-            <div className="h-4 w-px bg-slate-800" />
-            <div className="flex items-center gap-2 text-emerald-400 text-xs font-mono">
+        <header className="h-auto min-h-[4rem] bg-slate-900/50 backdrop-blur-md border-b border-slate-800 flex flex-col md:flex-row items-center justify-between px-4 md:px-6 py-2 md:py-0 z-10 absolute top-0 left-0 right-0 gap-2 md:gap-0 pl-20 md:pl-6">
+          <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-between md:justify-start">
+            <h2 className="text-xs md:text-sm font-medium text-slate-400">Global Overview</h2>
+            <div className="hidden md:block h-4 w-px bg-slate-800" />
+            <div className="flex items-center gap-2 text-emerald-400 text-[10px] md:text-xs font-mono">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               SYSTEM ACTIVE
             </div>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center justify-end gap-3 md:gap-6 w-full md:w-auto">
              <div className="flex bg-slate-800 rounded-lg p-1 gap-1">
                 <ModeButton 
-                  icon={<Car size={16} />} 
+                  icon={<Car size={14} />} 
                   active={drivingMode === 'normal'} 
                   onClick={() => changeMode('normal', 100)} 
                 />
                 <ModeButton 
-                  icon={<Leaf size={16} />} 
+                  icon={<Leaf size={14} />} 
                   active={drivingMode === 'economic'} 
                   onClick={() => changeMode('economic', 80)} 
                 />
                 <ModeButton 
-                  icon={<Zap size={16} />} 
+                  icon={<Zap size={14} />} 
                   active={drivingMode === 'urgent'} 
                   onClick={() => changeMode('urgent', 130)} 
                 />
                 <ModeButton 
-                  icon={<Footprints size={16} />} 
+                  icon={<Footprints size={14} />} 
                   active={drivingMode === 'pedestrian'} 
                   onClick={() => changeMode('pedestrian', 10)} 
                 />
              </div>
-             <div className="h-6 w-px bg-slate-800" />
-             <div className="flex items-center gap-4 text-slate-400">
-                <div className="flex items-center gap-1.5">
-                  <Battery size={16} />
-                  <span className="text-xs">85%</span>
+             <div className="hidden md:block h-6 w-px bg-slate-800" />
+             <div className="flex items-center gap-3 text-slate-400">
+                <div className="flex items-center gap-1">
+                  <Battery size={14} />
+                  <span className="text-[10px] md:text-xs">85%</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <Signal size={16} />
-                  <span className="text-xs">LTE</span>
+                <div className="flex items-center gap-1">
+                  <Signal size={14} />
+                  <span className="text-[10px] md:text-xs">LTE</span>
                 </div>
              </div>
-             <button 
-               onClick={handleLogout}
-               className="relative p-2 text-slate-400 hover:text-white transition-colors"
-             >
-               <Bell size={20} />
-               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand-500 rounded-full border-2 border-slate-900" />
-             </button>
-             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-brand-500 to-indigo-500 cursor-pointer" onClick={handleLogout} />
+             <div className="flex items-center gap-3">
+               <button 
+                 onClick={handleLogout}
+                 className="relative p-1 md:p-2 text-slate-400 hover:text-white transition-colors"
+               >
+                 <Bell size={18} />
+                 <span className="absolute top-1 right-1 w-2 h-2 bg-brand-500 rounded-full border-2 border-slate-900" />
+               </button>
+               <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-gradient-to-tr from-brand-500 to-indigo-500 cursor-pointer" onClick={handleLogout} />
+             </div>
           </div>
         </header>
 
@@ -491,7 +498,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Map Layer Controls */}
-        <div className="absolute bottom-40 right-8 flex flex-col gap-2 z-10">
+        <div className="absolute bottom-24 md:bottom-40 right-4 md:right-8 flex flex-col gap-2 z-10 scale-90 md:scale-100 origin-bottom-right">
           <button 
             onClick={() => setBaseLayer('normal')}
             className={`p-3 rounded-xl shadow-lg transition-all ${baseLayer === 'normal' ? 'bg-brand-500 text-white' : 'bg-slate-900/90 text-slate-400 hover:text-white'}`}
@@ -525,7 +532,7 @@ const App: React.FC = () => {
 
         {/* Routing Panel */}
         {viewMode === 'routing' && (
-          <div className="absolute top-20 left-8 w-80 bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 shadow-2xl z-10 animate-in slide-in-from-left-4">
+          <div className="absolute top-24 md:top-20 left-4 md:left-8 w-[calc(100%-2rem)] md:w-80 bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 shadow-2xl z-10 animate-in slide-in-from-left-4">
             <h3 className="font-bold text-white mb-4">Route Optimization</h3>
             <div className="space-y-4">
               <div className="relative">
@@ -571,7 +578,7 @@ const App: React.FC = () => {
 
         {/* Geofences Panel */}
         {viewMode === 'geofences' && (
-          <div className="absolute top-20 left-8 w-80 bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 shadow-2xl z-10 animate-in slide-in-from-left-4">
+          <div className="absolute top-24 md:top-20 left-4 md:left-8 w-[calc(100%-2rem)] md:w-80 bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 shadow-2xl z-10 animate-in slide-in-from-left-4">
             <h3 className="font-bold text-white mb-4 flex items-center gap-2"><Shield size={18} /> Geofences</h3>
             <p className="text-xs text-slate-400 mb-4">
               Geofences trigger alerts when assets cross their boundaries.
@@ -603,7 +610,7 @@ const App: React.FC = () => {
 
         {/* History Player Overlay */}
         {viewMode === 'history' && history.length > 0 && (
-          <div className="absolute top-24 left-1/2 -translate-x-1/2 w-[400px] bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 shadow-2xl z-10 flex flex-col gap-4 animate-in slide-in-from-top-4">
+          <div className="absolute top-24 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] md:w-[400px] bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-4 md:p-5 shadow-2xl z-10 flex flex-col gap-4 animate-in slide-in-from-top-4">
             <div className="flex justify-between items-center text-white">
               <h3 className="font-bold text-sm flex items-center gap-2"><History size={16} className="text-brand-500" /> Reproductor de Historial</h3>
               <span className="text-xs text-slate-400 font-mono bg-slate-800 px-2 py-1 rounded">{historyPlaybackIndex + 1} / {history.length}</span>
@@ -668,7 +675,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Floating Status Card */}
-        <div className="absolute bottom-8 right-8 w-64 bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 shadow-2xl z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="absolute bottom-4 left-4 md:left-auto md:bottom-8 md:right-8 w-[calc(100%-2rem)] md:w-64 bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-4 md:p-5 shadow-2xl z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex justify-between items-start mb-4">
             <div>
               <h3 className="font-bold text-white">My Device</h3>
@@ -716,15 +723,15 @@ const App: React.FC = () => {
         </div>
 
         {error && (
-          <div className="absolute top-20 right-8 bg-red-500/10 border border-red-500/50 text-red-500 rounded-lg px-4 py-2 text-xs flex items-center gap-2 z-10">
+          <div className="absolute top-28 md:top-20 right-4 md:right-8 bg-red-500/10 border border-red-500/50 text-red-500 rounded-lg px-4 py-2 text-xs flex items-center gap-2 z-10">
             <Shield size={14} />
             {error}
           </div>
         )}
 
         {showAssetModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-96 shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
               <h2 className="text-xl font-bold mb-4 text-white flex items-center gap-2">
                 <Truck className="text-brand-500" /> {editingAsset ? 'Edit Asset' : 'Add New Asset'}
               </h2>
@@ -760,8 +767,8 @@ const App: React.FC = () => {
         )}
 
         {showGeofenceModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-96 shadow-2xl">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-sm shadow-2xl">
               <h2 className="text-xl font-bold mb-4 text-white">Save Geofence</h2>
               <div className="space-y-4">
                 <div>

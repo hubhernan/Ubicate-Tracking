@@ -50,17 +50,17 @@ const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ assets, geofences }) =>
   }, []);
 
   return (
-    <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-xl z-20 overflow-y-auto p-8 animate-in fade-in duration-300">
-      <div className="max-w-6xl mx-auto mt-16">
-        <h2 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
+    <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-xl z-20 overflow-y-auto p-4 md:p-8 animate-in fade-in duration-300">
+      <div className="max-w-6xl mx-auto mt-16 md:mt-16 mb-20 md:mb-0">
+        <h2 className="text-xl md:text-3xl font-bold text-white mb-2 flex items-center gap-3">
           <Activity className="text-brand-500" size={32} />
           Panel de Analíticas
         </h2>
         <p className="text-slate-400 mb-8">Información, rendimiento y salud de la flota en tiempo real.</p>
 
         {/* KPIs (Key Performance Indicators) */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-6 shadow-xl">
             <div className="flex items-center gap-4 mb-4">
               <div className="p-3 bg-brand-500/20 text-brand-500 rounded-xl">
                 <Truck size={24} />
@@ -110,10 +110,10 @@ const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ assets, geofences }) =>
         </div>
 
         {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl lg:col-span-2">
-            <h3 className="text-lg font-bold text-white mb-6">Kilometraje Semanal (Tendencia)</h3>
-            <div className="h-72">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 pb-8 md:pb-0">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-6 shadow-xl lg:col-span-2">
+            <h3 className="text-base md:text-lg font-bold text-white mb-6">Kilometraje Semanal (Tendencia)</h3>
+            <div className="h-64 md:h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={weeklyDistanceData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
@@ -130,9 +130,9 @@ const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ assets, geofences }) =>
             </div>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-            <h3 className="text-lg font-bold text-white mb-6">Estado de la Flota</h3>
-            <div className="h-72">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-6 shadow-xl">
+            <h3 className="text-base md:text-lg font-bold text-white mb-6">Estado de la Flota</h3>
+            <div className="h-64 md:h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
