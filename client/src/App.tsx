@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Map from './components/Map/Map';
 import Login from './components/Login';
+import AnalyticsPanel from './components/AnalyticsPanel';
 import { useLocation } from './hooks/useLocation';
 import { useSocket } from './hooks/useSocket';
 import { getGeofences, getHistory, calculateRoute, updateAssetMode, getAssets, createAsset, createGeofence } from './services/api';
@@ -40,7 +41,7 @@ const App: React.FC = () => {
   const [history, setHistory] = useState<any[]>([]);
   const [fleet, setFleet] = useState<any[]>([]);
   const [selectedAssetId, setSelectedAssetId] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'live' | 'history' | 'routing' | 'geofences'>('live');
+  const [viewMode, setViewMode] = useState<'live' | 'history' | 'routing' | 'geofences' | 'analytics'>('live');
   const [routeData, setRouteData] = useState<any>(null);
   const [baseLayer, setBaseLayer] = useState<'normal' | 'satellite' | 'terrain'>('normal');
   const [showTraffic, setShowTraffic] = useState(false);
@@ -287,7 +288,13 @@ const App: React.FC = () => {
             collapsed={!isSidebarOpen} 
             onClick={() => setViewMode('geofences')}
           />
-          <NavItem icon={<Activity size={22} />} label="Analytics" collapsed={!isSidebarOpen} />
+          <NavItem 
+            icon={<Activity size={22} />} 
+            label="Analytics" 
+            active={viewMode === 'analytics'}
+            collapsed={!isSidebarOpen} 
+            onClick={() => setViewMode('analytics')}
+          />
         </nav>
 
         {isSidebarOpen && (
@@ -522,6 +529,11 @@ const App: React.FC = () => {
                </button>
             )}
           </div>
+        )}
+
+        {/* Analytics Panel */}
+        {viewMode === 'analytics' && (
+          <AnalyticsPanel assets={fleet} geofences={geofences} />
         )}
 
         {/* Notifications */}
