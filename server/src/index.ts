@@ -8,6 +8,7 @@ import historyRoutes from './routes/history.routes';
 import routingRoutes from './routes/routing.routes';
 import assetRoutes from './routes/asset.routes';
 import authRoutes from './routes/auth.routes';
+import groupRoutes from './routes/group.routes';
 import { checkPosition } from './controllers/geofence.controller';
 import { savePosition } from './services/position.service';
 import { getAssetConfig } from './controllers/asset.controller';
@@ -34,6 +35,7 @@ app.use('/api/geofences', authenticateJWT, geofenceRoutes);
 app.use('/api/history', authenticateJWT, historyRoutes);
 app.use('/api/routing', authenticateJWT, routingRoutes);
 app.use('/api/assets', authenticateJWT, assetRoutes);
+app.use('/api/groups', authenticateJWT, groupRoutes);
 
 // Basic health check
 app.get('/health', (req, res) => {

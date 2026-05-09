@@ -6,20 +6,36 @@ import pool from '../config/db';
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
 export const register = async (req: Request, res: Response) => {
+  const client = await pool.connect();
   try {
     const { email, password, fullName, phone, role } = req.body;
     const passwordHash = await bcrypt.hash(password, 10);
     
-    const result = await pool.query(
+    await client.query('BEGIN');
+
+    const result = await client.query(
       `INSERT INTO users (email, password_hash, full_name, phone_number, role) 
        VALUES ($1, $2, $3, $4, $5) 
        RETURNING id, email, full_name, role`,
       [email, passwordHash, fullName, phone, role || 'asset']
     );
     
-    res.status(201).json(result.rows[0]);
+    const newUser = result.rows[0];
+
+    // Auto-create a tracking asset (their phone)
+    await client.query(
+      `INSERT INTO assets (user_id, name, type, metadata) 
+       VALUES ($1, $2, $3, $4)`,
+      [newUser.id, `Celular de ${fullName.split(' ')[0]}`, 'person', JSON.stringify({ autoCreated: true, color: '#3b82f6' })]
+    );
+
+    await client.query('COMMIT');
+    res.status(201).json(newUser);
   } catch (error: any) {
+    await client.query('ROLLBACK');
     res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
   }
 };
 
