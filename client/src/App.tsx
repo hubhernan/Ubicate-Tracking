@@ -52,6 +52,8 @@ const App: React.FC = () => {
   const { coords, error } = useLocation();
   const [showAssetModal, setShowAssetModal] = useState(false);
   const [isTransmitting, setIsTransmitting] = useState(false);
+  const [isPlayingHistory, setIsPlayingHistory] = useState(false);
+  const [historyPlaybackIndex, setHistoryPlaybackIndex] = useState(0);
   const [newAsset, setNewAsset] = useState({ name: '', type: 'vehicle' });
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [showGeofenceModal, setShowGeofenceModal] = useState(false);
@@ -149,6 +151,8 @@ const App: React.FC = () => {
       const data = await getHistory(selectedAssetId, start, end);
       setHistory(data);
       setViewMode('history');
+      setHistoryPlaybackIndex(0);
+      setIsPlayingHistory(false);
       if (data.length === 0) {
         addNotification('No se encontró historial en las últimas 24h', 'info');
       } else {
@@ -235,6 +239,23 @@ const App: React.FC = () => {
       });
     }
   }, [coords, emit, user, selectedAssetId, isTransmitting]);
+
+  // History Playback Timer
+  useEffect(() => {
+    let interval: any;
+    if (isPlayingHistory && history.length > 0) {
+      interval = setInterval(() => {
+        setHistoryPlaybackIndex(prev => {
+          if (prev >= history.length - 1) {
+            setIsPlayingHistory(false);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 500); // 500ms per point
+    }
+    return () => clearInterval(interval);
+  }, [isPlayingHistory, history]);
 
   if (!user) {
     return <Login onLogin={setUser} />;
@@ -407,6 +428,7 @@ const App: React.FC = () => {
             zoom={14}
             geofences={geofences}
             history={viewMode === 'history' ? history : []} 
+            historyPlaybackIndex={historyPlaybackIndex}
             routeData={viewMode === 'routing' ? routeData : null}
             assets={fleet}
             selectedAssetId={selectedAssetId}
@@ -529,6 +551,54 @@ const App: React.FC = () => {
                  <Plus size={16} /> Crear Geocerca
                </button>
             )}
+          </div>
+        )}
+
+        {/* History Player Overlay */}
+        {viewMode === 'history' && history.length > 0 && (
+          <div className="absolute top-24 left-1/2 -translate-x-1/2 w-[400px] bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 shadow-2xl z-10 flex flex-col gap-4 animate-in slide-in-from-top-4">
+            <div className="flex justify-between items-center text-white">
+              <h3 className="font-bold text-sm flex items-center gap-2"><History size={16} className="text-brand-500" /> Reproductor de Historial</h3>
+              <span className="text-xs text-slate-400 font-mono bg-slate-800 px-2 py-1 rounded">{historyPlaybackIndex + 1} / {history.length}</span>
+            </div>
+            
+            <input 
+              type="range" 
+              min="0" 
+              max={history.length - 1} 
+              value={historyPlaybackIndex}
+              onChange={(e) => setHistoryPlaybackIndex(parseInt(e.target.value))}
+              className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-brand-500"
+            />
+            
+            <div className="flex justify-center gap-4">
+              <button 
+                onClick={() => {
+                  setHistoryPlaybackIndex(0);
+                  setIsPlayingHistory(false);
+                }}
+                className="p-2 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+                title="Reiniciar"
+              >
+                <div className="w-4 h-4 bg-current rounded-sm" /> {/* Stop Icon */}
+              </button>
+              <button 
+                onClick={() => setIsPlayingHistory(!isPlayingHistory)}
+                className="px-8 py-2 bg-brand-500 text-white rounded-lg font-bold hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20 flex items-center gap-2"
+              >
+                {isPlayingHistory ? (
+                  <>
+                    <div className="flex gap-1"><div className="w-1.5 h-4 bg-white rounded-full"/><div className="w-1.5 h-4 bg-white rounded-full"/></div>
+                    Pausa
+                  </>
+                ) : (
+                  <>
+                    <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-[10px] border-l-white border-b-[6px] border-b-transparent ml-1" />
+                    Play
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         )}
 

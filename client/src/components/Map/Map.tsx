@@ -8,6 +8,7 @@ interface MapProps {
   zoom?: number;
   geofences?: any[];
   history?: any[];
+  historyPlaybackIndex?: number;
   routeData?: any;
   assets?: any[];
   selectedAssetId?: string;
@@ -30,6 +31,7 @@ const Map: React.FC<MapProps> = ({
   zoom = 12, 
   geofences = [],
   history = [],
+  historyPlaybackIndex = 0,
   routeData = null,
   assets = [],
   selectedAssetId = '',
@@ -46,6 +48,7 @@ const Map: React.FC<MapProps> = ({
   const historyLayerRef = useRef<L.FeatureGroup | null>(null);
   const routeLayerRef = useRef<L.FeatureGroup | null>(null);
   const assetsLayerRef = useRef<L.FeatureGroup | null>(null);
+  const playbackLayerRef = useRef<L.FeatureGroup | null>(null);
 
   // Initialize Map and Layer Groups
   useEffect(() => {
@@ -59,6 +62,7 @@ const Map: React.FC<MapProps> = ({
       historyLayerRef.current = L.featureGroup().addTo(mapInstance.current);
       routeLayerRef.current = L.featureGroup().addTo(mapInstance.current);
       assetsLayerRef.current = L.featureGroup().addTo(mapInstance.current);
+      playbackLayerRef.current = L.featureGroup().addTo(mapInstance.current);
     }
   }, []); // Only run once on mount
 
@@ -114,6 +118,29 @@ const Map: React.FC<MapProps> = ({
       }
     }
   }, [history]);
+
+  // History Playback Marker
+  useEffect(() => {
+    const fg = playbackLayerRef.current;
+    if (!fg) return;
+    fg.clearLayers();
+    
+    if (history.length > 0 && historyPlaybackIndex >= 0 && historyPlaybackIndex < history.length) {
+      const point = history[historyPlaybackIndex];
+      const coords = point.geometry?.coordinates;
+      if (coords) {
+        const customIcon = L.divIcon({
+          className: 'playback-marker',
+          html: `<div style="background-color: #f59e0b; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 12px #f59e0b;"></div>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8]
+        });
+        L.marker([coords[1], coords[0]], { icon: customIcon }).addTo(fg);
+        // Optional: pan camera smoothly to follow the playback
+        // mapInstance.current?.panTo([coords[1], coords[0]], { animate: true });
+      }
+    }
+  }, [historyPlaybackIndex, history]);
 
   // Routes
   useEffect(() => {
